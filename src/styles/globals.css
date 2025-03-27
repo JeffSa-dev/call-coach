@@ -10,6 +10,24 @@
   }
 }
 
+@font-face {
+  font-family: 'Adobe Garamond Pro';
+  src: url('/fonts/AdobeGaramondPro-Regular.woff2') format('woff2'),
+       url('/fonts/AdobeGaramondPro-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Adobe Garamond Pro';
+  src: url('/fonts/AdobeGaramondPro-Bold.woff2') format('woff2'),
+       url('/fonts/AdobeGaramondPro-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body {
   max-width: 100vw;
@@ -19,7 +37,7 @@ body {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Garamond, "Times New Roman", serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

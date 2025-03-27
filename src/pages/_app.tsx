@@ -6,25 +6,44 @@ const theme = extendTheme({
   styles: {
     global: (props: any) => ({
       body: {
-        bg: props.colorMode === 'dark' ? 'gray.800' : 'white',
-        color: props.colorMode === 'dark' ? 'white' : 'gray.800',
+        bg: props.colorMode === 'dark' ? 'brand.700' : 'brand.50',
+        color: props.colorMode === 'dark' ? 'brand.50' : 'brand.900',
       },
     }),
   },
   colors: {
     brand: {
-      50: '#f7fafc',
-      100: '#edf2f7',
-      // Add more custom colors as needed
+      50: '#F2F0ED',  // Your foreground color
+      100: '#E5E2DE',
+      200: '#D8D4CF',
+      300: '#BDCCD4',  // Your background color
+      400: '#A9BCC6',
+      500: '#95ACB8',
+      600: '#819CAA',
+      700: '#6D8C9C',
+      800: '#597C8E',
+      900: '#456C80',
     },
+    accent: {
+      50: '#E6F2F5',
+      100: '#CCE5EB',
+      200: '#B3D8E1',
+      300: '#99CBD7',
+      400: '#80BECD',
+      500: '#66B1C3',
+      600: '#4DA4B9',
+      700: '#3397AF',
+      800: '#1A8AA5',
+      900: '#007D9B',
+    }
   },
   fonts: {
-    heading: 'Garamond, serif',
-    body: 'Garamond, serif',
+    heading: 'Garamond, "Times New Roman", serif',
+    body: 'Garamond, "Times New Roman", serif',
   },
   config: {
     initialColorMode: 'light',
-    useSystemColorMode: true,
+    useSystemColorMode: false,
   },
 })
 
