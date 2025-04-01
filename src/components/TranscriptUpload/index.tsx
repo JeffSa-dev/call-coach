@@ -2,19 +2,37 @@
 import { 
     Box, Button, VStack, Text, Input, Select, 
     useToast, FormControl, FormLabel, 
-    FormHelperText, Progress
+    FormHelperText, Progress, Flex, IconButton
   } from '@chakra-ui/react'
   import { useCallback, useState } from 'react'
   import { useDropzone } from 'react-dropzone'
-  import { createClient } from '@supabase/supabase-js'
-  
+  import { Session } from '@supabase/supabase-js'
+  import { FiX } from 'react-icons/fi'
+  import { supabase } from '@/lib/supabase-client'
+  import { analyzeTranscript } from '@/lib/claude'
+
   type UploadFormData = {
     title: string
     customer_name: string
     call_type: string
   }
   
-  export default function TranscriptUpload() {
+  interface TranscriptUploadProps {
+    session: Session | null;
+    onClose: () => void;
+  }
+  
+  export default function TranscriptUpload({ session, onClose }: TranscriptUploadProps) {
+    // Check authentication at the component level
+    if (!session?.user) {
+      return (
+        <Box p={4}>
+          <Text>Please sign in to upload transcripts.</Text>
+          <Button mt={4} onClick={onClose}>Close</Button>
+        </Box>
+      )
+    }
+  
     const toast = useToast()
     const [uploading, setUploading] = useState(false)
     const [progress, setProgress] = useState(0)
@@ -25,96 +43,176 @@ import {
     })
   
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
-      if (acceptedFiles.length === 0) return
-  
-      const file = acceptedFiles[0]
-      if (!formData.title || !formData.customer_name || !formData.call_type) {
+      if (!session?.user) {
         toast({
-          title: 'Missing information',
-          description: 'Please fill in all fields before uploading',
+          title: 'Authentication required',
+          description: 'Please sign in to upload transcripts',
           status: 'error'
         })
         return
       }
   
+      if (!formData.title || !formData.customer_name || !formData.call_type) {
+        toast({
+          title: 'Missing information',
+          description: 'Please fill in all required fields',
+          status: 'error'
+        })
+        return
+      }
+  
+      const file = acceptedFiles[0]
       setUploading(true)
-      setProgress(0)
+      
+      let analysisRecord: any = null; // Add this to track the analysis record
   
       try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
+        // Validate file size
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+          throw new Error('File size too large. Maximum size is 10MB.');
+        }
   
-        // Create analysis record
+        // First create the analysis record with initial metadata
         const { data: analysis, error: dbError } = await supabase
           .from('analyses')
-          .insert([{
+          .insert({
+            user_id: session.user.id,
             title: formData.title,
             customer_name: formData.customer_name,
             call_type: formData.call_type,
-            status: 'uploaded',
-            file_type: file.type
-          }])
+            status: 'processing',
+            file_type: file.type,
+            created_at: new Date().toISOString()
+          })
           .select()
           .single()
   
         if (dbError) throw dbError
   
-        // Upload file
-        const filePath = `transcripts/${analysis.id}/${file.name}`
-        const { error: uploadError } = await supabase.storage
-          .from('transcripts')
-          .upload(filePath, file, {
-            onUploadProgress: (progress) => {
-              setProgress((progress.loaded / progress.total) * 100)
-            }
+        if (!analysis?.id) {
+          throw new Error('Failed to create analysis record')
+        }
+  
+        analysisRecord = analysis; // Store the analysis record
+  
+        // Process file upload and Claude analysis in parallel
+        const filePath = `${analysis.id}/${file.name}`
+        
+        try {
+          console.log('Starting parallel processing');
+          const [uploadResult, claudeResults] = await Promise.all([
+            supabase.storage
+              .from('transcripts')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              }),
+            
+            file.text().then(async text => {
+              console.log('File text extracted:', { 
+                textLength: text.length,
+                fileType: file.type,
+                fileName: file.name 
+              });
+              
+              if (!text) {
+                throw new Error('Failed to read file content');
+              }
+              
+              console.log('Calling analysis API');
+              return analyzeTranscript(text, {
+                customer_name: formData.customer_name,
+                call_type: formData.call_type,
+                objectives: 'Analyze customer call'
+              });
+            }).catch(error => {
+              console.error('Analysis error details:', {
+                message: error.message,
+                cause: error.cause,
+                stack: error.stack
+              });
+              throw new Error(`Analysis failed: ${error.message}`);
+            })
+          ])
+  
+          console.log('Parallel processing complete:', {
+            uploadSuccess: !uploadResult.error,
+            hasClaudeResults: !!claudeResults
+          });
+  
+          if (uploadResult.error) throw uploadResult.error
+  
+          // Update analysis record with results and file path
+          const { error: updateError } = await supabase
+            .from('analyses')
+            .update({
+              status: 'completed',
+              transcript_url: filePath,
+              results: claudeResults,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', analysis.id)
+  
+          if (updateError) throw updateError
+  
+          toast({
+            title: 'Analysis complete',
+            description: 'Your transcript has been processed successfully',
+            status: 'success'
           })
   
-        if (uploadError) throw uploadError
-  
-        // Update analysis with file URL
-        const { error: updateError } = await supabase
-          .from('analyses')
-          .update({
-            transcript_url: filePath,
-            status: 'processing'
+          // Reset form and close
+          setFormData({
+            title: '',
+            customer_name: '',
+            call_type: ''
           })
-          .eq('id', analysis.id)
+          onClose()
   
-        if (updateError) throw updateError
+        } catch (parallelError: any) {
+          // Handle parallel processing errors
+          if (analysisRecord?.id) {
+            await supabase
+              .from('analyses')
+              .update({
+                status: 'error',
+                error_message: parallelError.message || 'Unknown error'
+              })
+              .eq('id', analysisRecord.id)
+          }
+          throw parallelError
+        }
   
-        // Trigger analysis processing
-        await fetch('/api/analysis/process', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ analysisId: analysis.id })
-        })
-  
-        toast({
-          title: 'Upload successful',
-          description: 'Your transcript is being processed',
-          status: 'success'
-        })
-  
-        // Reset form
-        setFormData({
-          title: '',
-          customer_name: '',
-          call_type: ''
-        })
-  
-      } catch (error) {
+      } catch (error: any) {
+        console.error('Upload error details:', {
+          message: error.message,
+          type: typeof error,
+          stack: error.stack
+        });
+        
         toast({
           title: 'Upload failed',
-          description: error instanceof Error ? error.message : 'An error occurred',
-          status: 'error'
-        })
+          description: error.message || 'An unexpected error occurred',
+          status: 'error',
+          duration: 5000,
+          isClosable: true
+        });
+  
+        // Update analysis status if it was created
+        if (analysisRecord?.id) {
+          await supabase
+            .from('analyses')
+            .update({
+              status: 'error',
+              error_message: error instanceof Error ? error.message : 'Unknown error'
+            })
+            .eq('id', analysisRecord.id)
+        }
       } finally {
         setUploading(false)
         setProgress(0)
       }
-    }, [formData, toast])
+    }, [formData, session, toast, onClose])
   
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
       onDrop,
@@ -128,6 +226,16 @@ import {
   
     return (
       <VStack spacing={6} align="stretch">
+        <Flex justify="space-between" align="center" mb={4}>
+          <Text fontSize="xl" fontWeight="bold">Upload Transcript</Text>
+          <IconButton
+            aria-label="Close"
+            icon={<FiX />}
+            variant="ghost"
+            onClick={onClose}
+          />
+        </Flex>
+  
         <Box>
           <FormControl isRequired mb={4}>
             <FormLabel>Title</FormLabel>

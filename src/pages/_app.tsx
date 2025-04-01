@@ -1,6 +1,9 @@
 import "@/styles/globals.css";
 import { ChakraProvider, ColorModeScript, extendTheme } from '@chakra-ui/react'
 import type { AppProps } from "next/app";
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { SessionContextProvider } from '@supabase/auth-helpers-react'
+import { useEffect, useState } from 'react'
 
 const theme = extendTheme({
   styles: {
@@ -47,15 +50,26 @@ const theme = extendTheme({
   },
 })
 
-function MyApp({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps }: AppProps) {
+  const [supabaseClient] = useState(() => createClientComponentClient())
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
+
   return (
-    <>
-      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <ChakraProvider theme={theme}>
-        <Component {...pageProps} />
-      </ChakraProvider>
-    </>
+    <ChakraProvider>
+      <SessionContextProvider supabaseClient={supabaseClient}>
+        <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+        <ChakraProvider theme={theme}>
+          <Component {...pageProps} />
+        </ChakraProvider>
+      </SessionContextProvider>
+    </ChakraProvider>
   );
 }
-
-export default MyApp;

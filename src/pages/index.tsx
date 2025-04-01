@@ -1,366 +1,405 @@
-import { 
-  Box, Container, Heading, VStack, Text, Table, Thead, Tbody, Tr, Th, Td, 
-  Spinner, Badge, Button, Select, HStack, IconButton, Tooltip, 
-  useDisclosure, Collapse, Input
-} from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
-import Layout from '@/components/Layout'
-import { createClient } from '@supabase/supabase-js'
-import { FaEye, FaDownload, FaShare, FaFilter, FaUpload } from 'react-icons/fa'
-import { useRouter } from 'next/router'
+import { 
+  Box, 
+  Spinner, 
+  Center, 
+  Text, 
+  Container, 
+  VStack, 
+  Grid, 
+  Button, 
+  Flex,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  Icon,
+  useColorModeValue,
+  Divider,
+  Collapse,
+  Stack,
+  Select,
+  Input,
+  IconButton,
+  Slide,
+  SlideFade,
+} from '@chakra-ui/react'
+import { FiUpload, FiPieChart, FiClock, FiCheckCircle, FiFilter, FiX } from 'react-icons/fi'
+import SignIn from '@/components/Auth/Signin'
+import Sidebar from '@/components/Layout/Sidebar'
 import TranscriptUpload from '@/components/TranscriptUpload'
+import { createRoot } from 'react-dom/client'
+import { ChakraProvider } from '@chakra-ui/react'
+import { supabase } from '@/lib/supabase-client' // Import shared client
 
-type Analysis = {
-  id: string
-  title: string
-  customer_name: string
-  call_type: string
-  status: 'uploaded' | 'processing' | 'completed' | 'error'
-  created_at: string
-  completed_at: string | null
-  results: {
-    summary: string
-    competency_scores?: {
-      proving_value: number
-      communicating_value: number
-      competitive_positioning: number
-      expansion_opportunities: number
-    }
-  } | null
-}
-
-export default function Home() {
-  const router = useRouter()
-  const { isOpen, onToggle } = useDisclosure()
-  const { isOpen: isUploadOpen, onToggle: onUploadToggle } = useDisclosure()
-  const [analyses, setAnalyses] = useState<Analysis[]>([])
+function Home() {
+  const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  // Pagination
-  const [page, setPage] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const itemsPerPage = 10
-
-  // Filters
-  const [filters, setFilters] = useState({
-    status: '',
-    callType: '',
-    searchTerm: ''
+  const [stats, setStats] = useState({
+    totalCalls: 0,
+    analyzedCalls: 0,
+    averageScore: 0,
+    recentActivity: []
   })
+  const bgColor = useColorModeValue('white', 'gray.700')
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [filters, setFilters] = useState({
+    customerName: '',
+    callType: '',
+    dateRange: ''
+  })
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
 
   useEffect(() => {
-    const fetchAnalyses = async () => {
+    const setupAuth = async () => {
       try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
-
-        let query = supabase
-          .from('analyses')
-          .select('*', { count: 'exact' })
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        if (existingSession?.user) {
+          setSession(existingSession)
           
-        // Apply filters
-        if (filters.status) query = query.eq('status', filters.status)
-        if (filters.callType) query = query.eq('call_type', filters.callType)
-        if (filters.searchTerm) {
-          query = query.or(`title.ilike.%${filters.searchTerm}%,customer_name.ilike.%${filters.searchTerm}%`)
+          // Fetch recent analyses
+          const { data: analyses, error } = await supabase
+            .from('analyses')
+            .select('id, call_type, customer_name, results, completed_at')
+            .order('completed_at', { ascending: false })
+            .limit(5)
+
+          if (error) {
+            console.error('Error fetching analyses:', error)
+            return
+          }
+
+          // Transform analyses into activity items
+          const activities = analyses?.map(analysis => ({
+            id: analysis.id,
+            date: new Date(analysis.completed_at).toLocaleDateString(),
+            callType: analysis.call_type,
+            customerName: analysis.customer_name,
+            summary: analysis.results?.summary || 'No summary available',
+          })) || []
+
+          setStats(prev => ({
+            ...prev,
+            recentActivity: activities
+          }))
         }
-
-        const { data, count, error } = await query
-          .order('created_at', { ascending: false })
-          .range(page * itemsPerPage, (page + 1) * itemsPerPage - 1)
-
-        if (error) throw error
-        setAnalyses(data || [])
-        setTotalPages(Math.ceil((count || 0) / itemsPerPage))
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
+      } catch (error) {
+        console.error('Auth error:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchAnalyses()
-  }, [page, filters])
+    setupAuth()
 
-  const handleAction = async (action: 'view' | 'download' | 'share', analysis: Analysis) => {
-    switch (action) {
-      case 'view':
-        router.push(`/analysis/${analysis.id}`)
-        break
-      case 'download':
-        // Implement download logic
-        break
-      case 'share':
-        // Implement share logic
-        break
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setSession(session)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  const handleUpload = () => {
+    setIsUploadOpen(true)
+  }
+
+  const handleUploadClose = () => {
+    setIsUploadOpen(false)
+  }
+
+  if (loading) {
+    return (
+      <Center h="100vh">
+        <Spinner size="xl" />
+        <Text ml={4}>Loading dashboard...</Text>
+      </Center>
+    )
+  }
+
+  if (!session?.user) {
+    return (
+      <Container maxW="container.xl" py={8}>
+        <SignIn />
+      </Container>
+    )
   }
 
   return (
-    <Layout>
-      <Box minH="100vh">
-        <Container 
-          maxW="container.xl" 
-          py={{ base: 4, md: 8 }}
-          px={{ base: 6, md: 8 }}
-        >
-          <VStack spacing={{ base: 4, md: 8 }} align="stretch">
-            {/* Add Upload Button */}
-            <HStack 
-              justify="space-between" 
-              flexDir={{ base: 'column', sm: 'row' }}
-              spacing={{ base: 4, sm: 0 }}
-            >
-              <Heading 
-                as="h1" 
-                size={{ base: "lg", md: "xl" }}
-                color="brand.900"
+    <Flex>
+      <Sidebar />
+      <Box flex="1" ml={{ base: 0, md: "60px" }} transition="margin 0.3s">
+        <Container maxW="container.xl" py={8}>
+          <VStack spacing={8} align="stretch">
+            {/* Header Section with Upload Button */}
+            <Flex justify="space-between" align="center">
+              <Box>
+                <Text fontSize="2xl" fontWeight="bold" mb={2}>Welcome, {session.user.email}</Text>
+                <Text color="gray.600">Manage and analyze your calls</Text>
+              </Box>
+              <Button
+                leftIcon={<FiUpload />}
+                colorScheme="blue"
+                onClick={handleUpload}
               >
-                Recent Calls
-              </Heading>
-              <HStack>
-                <Button
-                  colorScheme="blue"
-                  leftIcon={<FaUpload />}
-                  onClick={onUploadToggle}
-                >
-                  Upload Transcript
-                </Button>
-                <IconButton
-                  aria-label="Toggle Filters"
-                  icon={<FaFilter />}
-                  onClick={onToggle}
-                />
-              </HStack>
-            </HStack>
+                Upload New Call
+              </Button>
+            </Flex>
 
-            {/* Upload Form */}
-            <Collapse in={isUploadOpen}>
-              <Box p={6} bg="white" rounded="lg" shadow="md">
-                <TranscriptUpload />
-              </Box>
-            </Collapse>
+            {/* CallCoach Banner */}
+            <Box 
+              p={8} 
+              borderRadius="lg" 
+              bg="brand.600" 
+              color="white"
+              position="relative"
+              overflow="hidden"
+            >
+              <Box 
+                position="absolute" 
+                top={0} 
+                right={0} 
+                w="40%" 
+                h="100%" 
+                bgGradient="linear(to-l, brand.500, transparent)"
+                opacity={0.4}
+              />
+              <VStack align="start" spacing={4} position="relative" zIndex={1}>
+                <Text fontSize="3xl" fontWeight="bold">
+                  Elevate Your Sales Performance
+                </Text>
+                <Text fontSize="lg" maxW="600px">
+                  Get AI-powered insights from your sales calls. 
+                  Improve your pitch, track your progress, and boost your success rate.
+                </Text>
+              </VStack>
+            </Box>
 
-            {/* Responsive Filters */}
-            <Collapse in={isOpen}>
-              <Box p={4} bg="white" rounded="md" shadow="sm">
-                <VStack spacing={4} align="stretch">
-                  <Input
-                    placeholder="Search..."
-                    value={filters.searchTerm}
-                    onChange={(e) => setFilters(f => ({ ...f, searchTerm: e.target.value }))}
+            {/* Recent Activity */}
+            <Box p={6} borderRadius="lg" boxShadow="base" bg={bgColor}>
+              <Flex justify="space-between" align="center" mb={6}>
+                <Flex align="center" gap={2}>
+                  <Text fontSize="lg" fontWeight="bold">Recent Activity</Text>
+                  <IconButton
+                    aria-label="Filter"
+                    icon={isFilterOpen ? <FiX /> : <FiFilter />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
                   />
-                  <HStack 
-                    spacing={4} 
-                    flexDir={{ base: 'column', md: 'row' }}
-                    align={{ base: 'stretch', md: 'center' }}
-                  >
-                    <Select
-                      value={filters.status}
-                      onChange={(e) => setFilters(f => ({ ...f, status: e.target.value }))}
-                    >
-                      <option value="">All Status</option>
-                      <option value="completed">Completed</option>
-                      <option value="processing">Processing</option>
-                      <option value="uploaded">Uploaded</option>
-                      <option value="error">Error</option>
-                    </Select>
-                    <Select
-                      value={filters.callType}
-                      onChange={(e) => setFilters(f => ({ ...f, callType: e.target.value }))}
-                    >
-                      <option value="">All Call Types</option>
-                      <option value="discovery">Discovery</option>
-                      <option value="qbr">QBR</option>
-                      <option value="followup">Follow-up</option>
-                      <option value="other">Other</option>
-                    </Select>
-                  </HStack>
-                </VStack>
-              </Box>
-            </Collapse>
+                </Flex>
+                <Text color="gray.500" fontSize="sm">Last 5 analyses</Text>
+              </Flex>
 
-            {/* Results Display */}
-            {loading ? (
-              <Box textAlign="center" py={8}>
-                <Spinner size="xl" color="accent.500" />
-              </Box>
-            ) : error ? (
-              <Box textAlign="center" py={8} color="red.500">
-                {error}
-              </Box>
-            ) : analyses.length === 0 ? (
-              <Box textAlign="center" py={8}>
-                <Text color="brand.600">No analyses found</Text>
-              </Box>
-            ) : (
-              <>
-                {/* Desktop Table View */}
-                <Box display={{ base: 'none', lg: 'block' }} overflowX="auto" shadow="md" rounded="lg" bg="white">
-                  <Table variant="simple">
-                    <Thead>
-                      <Tr>
-                        <Th>Title</Th>
-                        <Th>Customer</Th>
-                        <Th>Call Type</Th>
-                        <Th>Status</Th>
-                        <Th>Summary</Th>
-                        <Th>Actions</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {analyses.map((analysis) => (
-                        <Tr key={analysis.id}>
-                          <Td fontWeight="medium">{analysis.title}</Td>
-                          <Td>{analysis.customer_name}</Td>
-                          <Td>{analysis.call_type}</Td>
-                          <Td>
-                            <Badge colorScheme={
-                              analysis.status === 'completed' ? 'green' :
-                              analysis.status === 'processing' ? 'yellow' :
-                              analysis.status === 'error' ? 'red' : 'blue'
-                            }>
-                              {analysis.status}
-                            </Badge>
-                          </Td>
-                          <Td maxW="300px">
-                            <Text noOfLines={2}>
-                              {analysis.results?.summary || 'No summary available'}
-                            </Text>
-                          </Td>
-                          <Td>
-                            <HStack spacing={2}>
-                              <Tooltip label="View Details">
-                                <IconButton
-                                  aria-label="View"
-                                  icon={<FaEye />}
-                                  size="sm"
-                                  onClick={() => handleAction('view', analysis)}
-                                />
-                              </Tooltip>
-                              <Tooltip label="Download">
-                                <IconButton
-                                  aria-label="Download"
-                                  icon={<FaDownload />}
-                                  size="sm"
-                                  onClick={() => handleAction('download', analysis)}
-                                />
-                              </Tooltip>
-                              <Tooltip label="Share">
-                                <IconButton
-                                  aria-label="Share"
-                                  icon={<FaShare />}
-                                  size="sm"
-                                  onClick={() => handleAction('share', analysis)}
-                                />
-                              </Tooltip>
-                            </HStack>
-                          </Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </Box>
-
-                {/* Mobile Card View */}
-                <VStack 
-                  display={{ base: 'flex', lg: 'none' }} 
-                  spacing={4}
-                  align="stretch"
+              {/* Filter Panel */}
+              <Collapse in={isFilterOpen} animateOpacity>
+                <Box 
+                  p={4} 
+                  bg="gray.50" 
+                  borderRadius="md" 
+                  mb={6}
                 >
-                  {analyses.map((analysis) => (
-                    <Box 
-                      key={analysis.id}
-                      p={4}
-                      bg="white"
-                      rounded="md"
-                      shadow="sm"
-                    >
-                      <VStack align="stretch" spacing={3}>
-                        <HStack justify="space-between">
-                          <Text fontWeight="bold">{analysis.title}</Text>
-                          <Badge colorScheme={
-                            analysis.status === 'completed' ? 'green' :
-                            analysis.status === 'processing' ? 'yellow' :
-                            analysis.status === 'error' ? 'red' : 'blue'
-                          }>
-                            {analysis.status}
-                          </Badge>
-                        </HStack>
-                        
-                        <HStack justify="space-between">
-                          <Text fontSize="sm" color="gray.600">
-                            {analysis.customer_name}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
-                            {analysis.call_type}
-                          </Text>
-                        </HStack>
-
-                        <Text fontSize="sm" noOfLines={2}>
-                          {analysis.results?.summary || 'No summary available'}
-                        </Text>
-
-                        <HStack justify="flex-end" spacing={2}>
-                          <IconButton
-                            aria-label="View"
-                            icon={<FaEye />}
-                            size="sm"
-                            onClick={() => handleAction('view', analysis)}
-                          />
-                          <IconButton
-                            aria-label="Download"
-                            icon={<FaDownload />}
-                            size="sm"
-                            onClick={() => handleAction('download', analysis)}
-                          />
-                          <IconButton
-                            aria-label="Share"
-                            icon={<FaShare />}
-                            size="sm"
-                            onClick={() => handleAction('share', analysis)}
-                          />
-                        </HStack>
-                      </VStack>
-                    </Box>
-                  ))}
-                </VStack>
-
-                {/* Responsive Pagination */}
-                <Box p={4} borderTop="1px" borderColor="gray.200">
-                  <HStack 
-                    justify="center" 
-                    spacing={2}
-                    flexDir={{ base: 'column', sm: 'row' }}
-                    align="center"
-                  >
-                    <Button
-                      onClick={() => setPage(p => Math.max(0, p - 1))}
-                      isDisabled={page === 0}
-                      width={{ base: 'full', sm: 'auto' }}
-                    >
-                      Previous
-                    </Button>
-                    <Text>
-                      Page {page + 1} of {totalPages}
-                    </Text>
-                    <Button
-                      onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                      isDisabled={page === totalPages - 1}
-                      width={{ base: 'full', sm: 'auto' }}
-                    >
-                      Next
-                    </Button>
-                  </HStack>
+                  <Stack spacing={4}>
+                    <Text fontWeight="medium" color="gray.700">Filters</Text>
+                    <Grid templateColumns="repeat(3, 1fr)" gap={4}>
+                      <Box>
+                        <Text fontSize="sm" mb={2}>Customer Name</Text>
+                        <Input
+                          placeholder="Search customers..."
+                          size="sm"
+                          value={filters.customerName}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            customerName: e.target.value
+                          }))}
+                        />
+                      </Box>
+                      <Box>
+                        <Text fontSize="sm" mb={2}>Call Type</Text>
+                        <Select
+                          size="sm"
+                          placeholder="All types"
+                          value={filters.callType}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            callType: e.target.value
+                          }))}
+                        >
+                          <option value="Discovery">Discovery</option>
+                          <option value="Demo">Demo</option>
+                          <option value="Follow-up">Follow-up</option>
+                          <option value="QBR">QBR</option>
+                        </Select>
+                      </Box>
+                      <Box>
+                        <Text fontSize="sm" mb={2}>Date Range</Text>
+                        <Select
+                          size="sm"
+                          placeholder="All time"
+                          value={filters.dateRange}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            dateRange: e.target.value
+                          }))}
+                        >
+                          <option value="today">Today</option>
+                          <option value="week">This Week</option>
+                          <option value="month">This Month</option>
+                          <option value="quarter">This Quarter</option>
+                        </Select>
+                      </Box>
+                    </Grid>
+                    <Flex justify="flex-end" gap={2}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setFilters({
+                            customerName: '',
+                            callType: '',
+                            dateRange: ''
+                          })
+                        }}
+                      >
+                        Clear All
+                      </Button>
+                      <Button
+                        size="sm"
+                        colorScheme="blue"
+                        onClick={() => setIsFilterOpen(false)}
+                      >
+                        Apply Filters
+                      </Button>
+                    </Flex>
+                  </Stack>
                 </Box>
-              </>
-            )}
+              </Collapse>
+
+              {stats.recentActivity.length > 0 ? (
+                <VStack align="stretch" spacing={0}>
+                  {/* Table Header */}
+                  <Grid 
+                    templateColumns="2fr 1fr 2fr auto" 
+                    gap={4} 
+                    px={4} 
+                    py={3} 
+                    bg="gray.50" 
+                    borderTopRadius="md"
+                  >
+                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Customer</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Call Type</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Summary</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Date</Text>
+                  </Grid>
+                  
+                  {/* Table Body */}
+                  <VStack align="stretch" spacing={0} divider={<Divider />}>
+                    {stats.recentActivity.map((activity) => (
+                      <Grid 
+                        key={activity.id}
+                        templateColumns="2fr 1fr 2fr auto"
+                        gap={4}
+                        px={4}
+                        py={3}
+                        _hover={{ bg: 'gray.50' }}
+                        transition="background 0.2s"
+                        cursor="pointer"
+                        alignItems="center"
+                      >
+                        <Text fontWeight="medium">
+                          {activity.customerName}
+                        </Text>
+                        <Text 
+                          px={2} 
+                          py={0.5} 
+                          bg="gray.100" 
+                          fontSize="xs" 
+                          borderRadius="full"
+                          width="fit-content"
+                        >
+                          {activity.callType}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600" noOfLines={2}>
+                          {activity.summary}
+                        </Text>
+                        <Text fontSize="sm" color="gray.500" whiteSpace="nowrap">
+                          {activity.date}
+                        </Text>
+                      </Grid>
+                    ))}
+                  </VStack>
+                </VStack>
+              ) : (
+                <Text color="gray.500">No recent activity</Text>
+              )}
+            </Box>
           </VStack>
         </Container>
+        
+        <Slide
+          direction='right'
+          in={isUploadOpen}
+          style={{ zIndex: 10 }}
+        >
+          <Box
+            p={4}
+            bg={bgColor}
+            shadow="lg"
+            h="100vh"
+            w={{ base: "100%", md: "500px" }}
+            position="fixed"
+            top={0}
+            right={0}
+            overflowY="auto"
+          >
+            <TranscriptUpload 
+              session={session} 
+              onClose={handleUploadClose}
+            />
+          </Box>
+        </Slide>
       </Box>
-    </Layout>
+    </Flex>
   )
 }
+
+// Helper Components
+function StatCard({ icon, title, value, helpText }) {
+  const bgColor = useColorModeValue('white', 'gray.700')
+  
+  return (
+    <Box p={6} borderRadius="lg" boxShadow="base" bg={bgColor}>
+      <Flex align="center" mb={2}>
+        <Icon as={icon} boxSize={6} color="blue.500" />
+      </Flex>
+      <Stat>
+        <StatLabel>{title}</StatLabel>
+        <StatNumber>{value}</StatNumber>
+        <StatHelpText>{helpText}</StatHelpText>
+      </Stat>
+    </Box>
+  )
+}
+
+function ActionCard({ title, description, icon, onClick }) {
+  const bgColor = useColorModeValue('white', 'gray.700')
+  
+  return (
+    <Box 
+      p={6} 
+      borderRadius="lg" 
+      boxShadow="base" 
+      bg={bgColor}
+      cursor="pointer"
+      onClick={onClick}
+      _hover={{ transform: 'translateY(-2px)', transition: 'all 0.2s' }}
+    >
+      <Icon as={icon} boxSize={8} color="blue.500" mb={4} />
+      <Text fontSize="lg" fontWeight="bold" mb={2}>{title}</Text>
+      <Text color="gray.600">{description}</Text>
+    </Box>
+  )
+}
+
+export default Home

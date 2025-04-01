@@ -1,6 +1,7 @@
 // lib/claude.ts
 
 import { Anthropic } from '@anthropic-ai/sdk';
+import { RateLimiter } from 'limiter';
 
 // Types for transcript analysis
 interface AnalysisMetadata {
@@ -36,99 +37,153 @@ export type TranscriptMetadata = {
   meetingType?: string;
 };
 
-// API authentication and configuration
-const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
-const API_VERSION = '2023-06-01'; // Update this to the latest version
-const MODEL = 'claude-3-opus-20240229'; // Or your preferred Claude model
-
-const claudeClient = new Anthropic({
-  apiKey: CLAUDE_API_KEY,
-  baseURL: 'https://api.anthropic.com/v1',
-  version: API_VERSION,
+// Rate limiting configuration - more specific rules
+const globalLimiter = new RateLimiter({
+  tokensPerInterval: 50,    // 50 requests
+  interval: "hour"         // per hour
 });
 
-// Error handling wrapper for API calls
+const burstLimiter = new RateLimiter({
+  tokensPerInterval: 5,     // 5 requests
+  interval: "minute"       // per minute
+});
+
+// API authentication and configuration
+const CLAUDE_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
+
+// Add debug logging
+console.log('Claude API Key status:', {
+  exists: !!CLAUDE_API_KEY,
+  length: CLAUDE_API_KEY?.length || 0,
+  prefix: CLAUDE_API_KEY?.substring(0, 4) || 'none'
+});
+
+const MODEL = 'claude-3-haiku-20240307';
+
+// Create client with security measures
+const claudeClient = new Anthropic({
+  apiKey: CLAUDE_API_KEY || '',  // Ensure we always pass a string
+  dangerouslyAllowBrowser: true
+});
+
+// Enhanced rate limiting and validation
 async function makeClaudeRequest(requestFn: () => Promise<any>) {
   try {
+    // Check both rate limits
+    const [hasHourlyToken, hasBurstToken] = await Promise.all([
+      globalLimiter.tryRemoveTokens(1),
+      burstLimiter.tryRemoveTokens(1)
+    ]);
+
+    if (!hasHourlyToken) {
+      throw new Error('Hourly rate limit exceeded. Please try again later.');
+    }
+
+    if (!hasBurstToken) {
+      throw new Error('Too many requests. Please wait a minute and try again.');
+    }
+
+    // Validate API key
+    if (!CLAUDE_API_KEY) {
+      throw new Error('Claude API key is not configured.');
+    }
+
     return await requestFn();
   } catch (error: any) {
     if (error instanceof Anthropic.AnthropicError) {
       // Handle API-specific errors
-      const status = error.response?.status;
-      const message = error.response?.data?.error?.message || error.message;
+      const errorMessage = error.message || 'Unknown Claude API error';
+      
+      // Use error.error?.status or error.status based on the error structure
+      const status = error.error?.status || error.status;
       
       if (status === 401) {
         throw new Error('Authentication failed. Check your API key.');
       } else if (status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
+        throw new Error('Claude API rate limit exceeded. Please try again later.');
       } else if (status === 500) {
         throw new Error('Claude API server error. Please try again later.');
       }
       
-      throw new Error(`Claude API error (${status}): ${message}`);
+      throw new Error(`Claude API error: ${errorMessage}`);
     }
     
-    // For non-Anthropic errors
     throw new Error(`Error communicating with Claude: ${error.message}`);
   }
 }
 
-// Analyze transcript using Claude
+// Update the analyzeTranscript function
 export async function analyzeTranscript(
-  transcript: string, 
+  text: string, 
   metadata: AnalysisMetadata
 ): Promise<AnalysisResult> {
-  const systemPrompt = `
-    You are an expert Customer Success Manager coach analyzing a customer call transcript.
-    
-    CONTEXT:
-    - Customer: ${metadata.customer_name}
-    - Call Type: ${metadata.call_type}
-    - Objectives: ${metadata.objectives}
-    
-    Analyze the following transcript for:
-    1. Value articulation - how well the CSM connects product to business outcomes
-    2. Competitive positioning - how the CSM handles competitor mentions
-    3. Expansion opportunities - potential areas for account growth
-    
-    Provide a structured analysis with specific timestamps where relevant.
-    Format your response as valid JSON with the following structure:
-    {
-      "summary": "Overall assessment of the call",
-      "value_articulation": {
-        "strengths": [{"text": "Strength description", "timestamp": "MM:SS"}],
-        "opportunities": [{"text": "Improvement area", "timestamp": "MM:SS"}]
-      },
-      "competitive_positioning": {
-        "strengths": [{"text": "Strength description", "timestamp": "MM:SS"}],
-        "opportunities": [{"text": "Improvement area", "timestamp": "MM:SS"}]
-      },
-      "expansion_opportunities": [
-        {"description": "Opportunity description", "timestamp": "MM:SS"}
-      ]
-    }
-  `;
+  console.log('Starting transcript analysis:', {
+    textLength: text.length,
+    metadata
+  });
 
-  const userMessage = `TRANSCRIPT:\n${transcript}\n\nPlease analyze this transcript.`;
+  const prompt = `You are an expert Customer Success Manager coach. Analyze this transcript and provide insights in the following JSON format:
 
-  return makeClaudeRequest(async () => {
-    const response = await claudeClient.post('/messages', {
-      model: MODEL,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-      temperature: 0.2, // Lower temperature for more structured output
-      max_tokens: 4000,
-      response_format: { type: "json_object" }
+{
+  "summary": "Brief overview of the key points discussed in the call",
+  "value_articulation": {
+    "strengths": [
+      {"text": "Specific strength point identified", "timestamp": "optional timestamp if found"}
+    ],
+    "opportunities": [
+      {"text": "Specific opportunity for improvement", "timestamp": "optional timestamp if found"}
+    ]
+  },
+  "competitive_positioning": {
+    "strengths": [
+      {"text": "Competitive advantage mentioned", "timestamp": "optional timestamp if found"}
+    ],
+    "opportunities": [
+      {"text": "Area where competition might have advantage", "timestamp": "optional timestamp if found"}
+    ]
+  },
+  "expansion_opportunities": [
+    {"description": "Specific opportunity for expansion or upsell", "timestamp": "optional timestamp if found"}
+  ]
+}
+
+TRANSCRIPT:
+\${transcript}
+
+Remember to:
+1. Focus on specific, actionable insights
+2. Include direct quotes or examples from the transcript where relevant
+3. Provide timestamps if available in the transcript
+4. Return ONLY valid JSON matching the exact format above`;
+
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, metadata, prompt })
     });
 
-    // Parse the JSON response
-    try {
-      const content = response.data.content[0].text;
-      return JSON.parse(content) as AnalysisResult;
-    } catch (error) {
-      throw new Error('Failed to parse Claude response as JSON');
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Analysis API error:', data);
+      throw new Error(data.error || 'Analysis failed');
     }
-  });
+
+    try {
+      const parsedResult = JSON.parse(data.content[0].text) as AnalysisResult;
+      return parsedResult;
+    } catch (parseError) {
+      console.error('Failed to parse Claude response:', data.content[0].text);
+      throw new Error('Failed to parse analysis results');
+    }
+
+  } catch (error) {
+    console.error('Analysis error:', error);
+    throw error;
+  }
 }
 
 // Get coaching response from Claude
