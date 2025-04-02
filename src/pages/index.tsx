@@ -23,6 +23,7 @@ import {
   IconButton,
   Slide,
   SlideFade,
+  Badge,
 } from '@chakra-ui/react'
 import { FiUpload, FiPieChart, FiClock, FiCheckCircle, FiFilter, FiX } from 'react-icons/fi'
 import SignIn from '@/components/Auth/Signin'
@@ -31,6 +32,8 @@ import TranscriptUpload from '@/components/TranscriptUpload'
 import { createRoot } from 'react-dom/client'
 import { ChakraProvider } from '@chakra-ui/react'
 import { supabase } from '@/lib/supabase-client' // Import shared client
+import { useRouter } from 'next/router'
+import Link from 'next/link'
 
 function Home() {
   const [session, setSession] = useState(null)
@@ -73,9 +76,9 @@ function Home() {
           const activities = analyses?.map(analysis => ({
             id: analysis.id,
             date: new Date(analysis.completed_at).toLocaleDateString(),
-            callType: analysis.call_type,
-            customerName: analysis.customer_name,
-            summary: analysis.results?.summary || 'No summary available',
+            call_type: analysis.call_type,
+            customer_name: analysis.customer_name,
+            results: analysis.results,
           })) || []
 
           setStats(prev => ({
@@ -167,11 +170,11 @@ function Home() {
               />
               <VStack align="start" spacing={4} position="relative" zIndex={1}>
                 <Text fontSize="3xl" fontWeight="bold">
-                  Elevate Your Sales Performance
+                  Elevate Your CSM Performance
                 </Text>
                 <Text fontSize="lg" maxW="600px">
-                  Get AI-powered insights from your sales calls. 
-                  Improve your pitch, track your progress, and boost your success rate.
+                  Get AI-powered insights from your customer calls. 
+                  Improve your consulting skills, track your progress, and boost your success rate.
                 </Text>
               </VStack>
             </Box>
@@ -295,38 +298,8 @@ function Home() {
                   
                   {/* Table Body */}
                   <VStack align="stretch" spacing={0} divider={<Divider />}>
-                    {stats.recentActivity.map((activity) => (
-                      <Grid 
-                        key={activity.id}
-                        templateColumns="2fr 1fr 2fr auto"
-                        gap={4}
-                        px={4}
-                        py={3}
-                        _hover={{ bg: 'gray.50' }}
-                        transition="background 0.2s"
-                        cursor="pointer"
-                        alignItems="center"
-                      >
-                        <Text fontWeight="medium">
-                          {activity.customerName}
-                        </Text>
-                        <Text 
-                          px={2} 
-                          py={0.5} 
-                          bg="gray.100" 
-                          fontSize="xs" 
-                          borderRadius="full"
-                          width="fit-content"
-                        >
-                          {activity.callType}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600" noOfLines={2}>
-                          {activity.summary}
-                        </Text>
-                        <Text fontSize="sm" color="gray.500" whiteSpace="nowrap">
-                          {activity.date}
-                        </Text>
-                      </Grid>
+                    {stats.recentActivity.map((analysis) => (
+                      <ActivityItem key={analysis.id} analysis={analysis} />
                     ))}
                   </VStack>
                 </VStack>
@@ -401,5 +374,32 @@ function ActionCard({ title, description, icon, onClick }) {
     </Box>
   )
 }
+
+const ActivityItem = ({ analysis }) => {
+  return (
+    <Link href={`/analysis/${analysis.id}`} style={{ textDecoration: 'none' }}>
+      <Grid
+        templateColumns="2fr 1fr 1fr 100px 100px"
+        gap={4}
+        p={4}
+        alignItems="center"
+        _hover={{ bg: 'gray.50' }}
+        cursor="pointer"
+      >
+        <Text fontWeight="medium">{analysis.customer_name}</Text>
+        <Text color="gray.600">{analysis.call_type}</Text>
+        <Text color="gray.600">
+          {analysis.date}
+        </Text>
+        <Badge colorScheme="green" textAlign="center">
+          {analysis.results?.value_articulation?.strengths?.length || 0}
+        </Badge>
+        <Badge colorScheme="orange" textAlign="center">
+          {analysis.results?.value_articulation?.opportunities?.length || 0}
+        </Badge>
+      </Grid>
+    </Link>
+  );
+};
 
 export default Home

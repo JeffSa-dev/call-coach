@@ -44,6 +44,20 @@ interface Analysis {
   };
 }
 
+const formatTimestamp = (timestamp: string | number): string => {
+  // Convert to number if it's a string
+  const seconds = Number(timestamp);
+  
+  // Calculate minutes and remaining seconds
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  
+  // Pad seconds with leading zero if needed
+  const paddedSeconds = remainingSeconds.toString().padStart(2, '0');
+  
+  return `${minutes}:${paddedSeconds}`;
+};
+
 export default function AnalysisPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -98,7 +112,7 @@ export default function AnalysisPage() {
             <Flex justify="space-between" align="start">
               <Box>
                 <Text fontSize="2xl" fontWeight="bold" color="gray.800">
-                  CSM Call Coaching Assessment
+                  Call Summary
                 </Text>
                 <Flex align="center" mt={2} gap={4}>
                   <Text fontWeight="bold" color="gray.600">
@@ -188,7 +202,12 @@ export default function AnalysisPage() {
                         rounded="md"
                       >
                         <Text fontWeight="bold" color="green.700" mb={2}>
-                          {strength.text} {strength.timestamp && `[${strength.timestamp}]`}
+                          {strength.text} 
+                          {strength.timestamp && (
+                            <Text as="span" fontSize="sm" color="green.600" ml={2}>
+                              [{formatTimestamp(strength.timestamp)}]
+                            </Text>
+                          )}
                         </Text>
                       </Box>
                     ))}
@@ -209,7 +228,12 @@ export default function AnalysisPage() {
                         rounded="md"
                       >
                         <Text fontWeight="bold" color="orange.700" mb={2}>
-                          {opportunity.text} {opportunity.timestamp && `[${opportunity.timestamp}]`}
+                          {opportunity.text} 
+                          {opportunity.timestamp && (
+                            <Text as="span" fontSize="sm" color="orange.600" ml={2}>
+                              [{formatTimestamp(opportunity.timestamp)}]
+                            </Text>
+                          )}
                         </Text>
                       </Box>
                     ))}
