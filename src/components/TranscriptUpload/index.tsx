@@ -72,7 +72,7 @@ import {
           throw new Error('File size too large. Maximum size is 10MB.');
         }
   
-        // Create initial analysis record
+        // First create the analysis record with initial metadata
         const { data: analysis, error: dbError } = await supabase
           .from('analyses')
           .insert({
@@ -80,7 +80,7 @@ import {
             title: formData.title,
             customer_name: formData.customer_name,
             call_type: formData.call_type,
-            status: 'pending_extraction', // New status
+            status: 'processing',
             file_type: file.type,
             created_at: new Date().toISOString()
           })
@@ -95,36 +95,83 @@ import {
   
         analysisRecord = analysis; // Store the analysis record
   
-        // Upload file to storage
+        // Process file upload and Claude analysis in parallel
         const filePath = `${analysis.id}/${file.name}`
         
-        const { error: uploadError } = await supabase.storage
-          .from('transcripts')
-          .upload(filePath, file)
+        try {
+          console.log('Starting parallel processing');
+          const [uploadResult, claudeResults] = await Promise.all([
+            supabase.storage
+              .from('transcripts')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              }),
+            
+            // For PDFs, we'll analyze the raw text content
+            // PDF extraction will happen in background
+            file.text().then(async text => {
+              if (!text) {
+                throw new Error('Failed to read file content');
+              }
+              
+              return analyzeTranscript(text, {
+                customer_name: formData.customer_name,
+                call_type: formData.call_type,
+                objectives: 'Analyze customer call'
+              });
+            })
+          ])
   
-        if (uploadError) throw uploadError
+          console.log('Parallel processing complete:', {
+            uploadSuccess: !uploadResult.error,
+            hasClaudeResults: !!claudeResults
+          });
   
-        // Update analysis with file path
-        await supabase
-          .from('analyses')
-          .update({
-            transcript_url: filePath
+          if (uploadResult.error) throw uploadResult.error
+  
+          // Update analysis record with results
+          const { error: updateError } = await supabase
+            .from('analyses')
+            .update({
+              status: 'completed',
+              transcript_url: filePath,
+              results: claudeResults,
+              completed_at: new Date().toISOString(),
+              // text_content will be null for PDFs, populated by cron job
+              text_content: file.type !== 'application/pdf' ? await file.text() : null
+            })
+            .eq('id', analysis.id)
+  
+          if (updateError) throw updateError
+  
+          toast({
+            title: 'Analysis complete',
+            description: 'Your transcript has been processed successfully',
+            status: 'success'
           })
-          .eq('id', analysis.id)
   
-        toast({
-          title: 'Upload complete',
-          description: 'Your transcript will be processed in the background',
-          status: 'success'
-        })
+          // Reset form and close
+          setFormData({
+            title: '',
+            customer_name: '',
+            call_type: ''
+          })
+          onClose()
   
-        // Reset form and close
-        setFormData({
-          title: '',
-          customer_name: '',
-          call_type: ''
-        })
-        onClose()
+        } catch (parallelError: any) {
+          // Handle parallel processing errors
+          if (analysisRecord?.id) {
+            await supabase
+              .from('analyses')
+              .update({
+                status: 'error',
+                error_message: parallelError.message || 'Unknown error'
+              })
+              .eq('id', analysisRecord.id)
+          }
+          throw parallelError
+        }
   
       } catch (error: any) {
         console.error('Upload error details:', {

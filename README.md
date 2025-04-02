@@ -74,3 +74,46 @@ Deploy using [Vercel](https://vercel.com/new) and configure the following:
 1. Environment variables
 2. Supabase integration
 3. Build settings
+
+## Vercel Configuration
+
+### Cron Jobs
+
+The application uses Vercel Cron Jobs to handle background PDF text extraction. This is configured in `vercel.json`:
+
+```json
+{
+  "crons": [{
+    "path": "/api/cron/extract-pdf",
+    "schedule": "*/15 * * * *"
+  }]
+}
+```
+
+To set this up:
+
+1. Add the `vercel.json` file to your project root
+2. Add `CRON_SECRET` to your Vercel environment variables:
+   - Go to Project Settings → Environment Variables
+   - Add `CRON_SECRET` with a secure random value
+3. Deploy to Vercel to activate the cron job
+
+The cron job will run every 15 minutes to process any pending PDF extractions.
+
+### Environment Variables
+
+Required environment variables for Vercel deployment:
+
+```bash
+CRON_SECRET=           # Secret key for cron job authentication
+ANTHROPIC_API_KEY=     # Claude API key
+NEXT_PUBLIC_SUPABASE_URL=     # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=# Supabase anonymous key
+```
+
+### Monitoring
+
+You can monitor cron job executions in your Vercel dashboard:
+1. Go to your project dashboard
+2. Navigate to "Functions" or "Logs"
+3. Filter for `/api/cron/extract-pdf` to see execution history

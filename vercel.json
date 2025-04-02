@@ -1,0 +1,6 @@
+{
+  "crons": [{
+    "path": "/api/cron/extract-pdf",
+    "schedule": "*/15 * * * *"
+  }]
+} 

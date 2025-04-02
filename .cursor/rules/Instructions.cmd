@@ -102,14 +102,14 @@ call-coach/
 - call_type (TEXT)
 - file_type (TEXT) - 'json', 'pdf', etc.
 - transcript_url (TEXT) - storage URL
-- transcript_text (TEXT, nullable) - extracted text content
+- text_content (TEXT, nullable) - extracted text content
 - file_metadata (JSONB, nullable) - format-specific information
 - status (TEXT - 'uploaded', 'processing', 'completed', 'error')
 - results (JSONB - Structured analysis results)
 - metadata (JSONB - Call context and objectives)
 - tags (TEXT[], nullable) - For categorization
 - created_at (TIMESTAMP)
-- completed_at (TIMESTAMP, nullable)
+- updated_at (TIMESTAMP, nullable)
 
 3. **conversations** - Store coaching conversations
 - id, analysis_id, messages, created_at, updated_at
