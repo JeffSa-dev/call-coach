@@ -20,9 +20,10 @@ import {
   interface TranscriptUploadProps {
     session: Session | null;
     onClose: () => void;
+    onUploadComplete?: () => void;
   }
   
-  export default function TranscriptUpload({ session, onClose }: TranscriptUploadProps) {
+  export default function TranscriptUpload({ session, onClose, onUploadComplete }: TranscriptUploadProps) {
     // Check authentication at the component level
     if (!session?.user) {
       return (
@@ -158,6 +159,7 @@ import {
             call_type: ''
           })
           onClose()
+          onUploadComplete?.()
   
         } catch (parallelError: any) {
           // Handle parallel processing errors
@@ -202,7 +204,7 @@ import {
         setUploading(false)
         setProgress(0)
       }
-    }, [formData, session, toast, onClose])
+    }, [formData, session, toast, onClose, onUploadComplete])
   
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
       onDrop,

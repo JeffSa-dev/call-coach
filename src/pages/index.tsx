@@ -24,6 +24,7 @@ import {
   Slide,
   SlideFade,
   Badge,
+  Tooltip,
 } from '@chakra-ui/react'
 import { FiUpload, FiPieChart, FiClock, FiCheckCircle, FiFilter, FiX } from 'react-icons/fi'
 import SignIn from '@/components/Auth/Signin'
@@ -53,6 +54,37 @@ function Home() {
   })
   const [isUploadOpen, setIsUploadOpen] = useState(false)
 
+  const refreshAnalyses = async () => {
+    try {
+      const { data: analyses, error } = await supabase
+        .from('analyses')
+        .select('id, call_type, customer_name, results, completed_at')
+        .order('completed_at', { ascending: false })
+        .limit(5)
+
+      if (error) {
+        console.error('Error fetching analyses:', error)
+        return
+      }
+
+      // Transform analyses into activity items
+      const activities = analyses?.map(analysis => ({
+        id: analysis.id,
+        date: new Date(analysis.completed_at).toLocaleDateString(),
+        call_type: analysis.call_type,
+        customer_name: analysis.customer_name,
+        results: analysis.results,
+      })) || []
+
+      setStats(prev => ({
+        ...prev,
+        recentActivity: activities
+      }))
+    } catch (error) {
+      console.error('Error refreshing analyses:', error)
+    }
+  }
+
   useEffect(() => {
     const setupAuth = async () => {
       try {
@@ -61,30 +93,7 @@ function Home() {
           setSession(existingSession)
           
           // Fetch recent analyses
-          const { data: analyses, error } = await supabase
-            .from('analyses')
-            .select('id, call_type, customer_name, results, completed_at')
-            .order('completed_at', { ascending: false })
-            .limit(5)
-
-          if (error) {
-            console.error('Error fetching analyses:', error)
-            return
-          }
-
-          // Transform analyses into activity items
-          const activities = analyses?.map(analysis => ({
-            id: analysis.id,
-            date: new Date(analysis.completed_at).toLocaleDateString(),
-            call_type: analysis.call_type,
-            customer_name: analysis.customer_name,
-            results: analysis.results,
-          })) || []
-
-          setStats(prev => ({
-            ...prev,
-            recentActivity: activities
-          }))
+          await refreshAnalyses()
         }
       } catch (error) {
         console.error('Auth error:', error)
@@ -169,10 +178,18 @@ function Home() {
                 opacity={0.4}
               />
               <VStack align="start" spacing={4} position="relative" zIndex={1}>
-                <Text fontSize="3xl" fontWeight="bold">
-                  Elevate Your CSM Performance
+                <Text 
+                  fontSize={{ base: "2xl", md: "3xl" }} 
+                  fontWeight="bold"
+                  maxW={{ base: "100%", md: "600px" }}
+                >
+                  Elevate Your Performance
                 </Text>
-                <Text fontSize="lg" maxW="600px">
+                <Text 
+                  fontSize={{ base: "md", md: "lg" }} 
+                  maxW={{ base: "100%", md: "900px" }}
+                  lineHeight="tall"
+                >
                   Get AI-powered insights from your customer calls. 
                   Improve your consulting skills, track your progress, and boost your success rate.
                 </Text>
@@ -230,9 +247,9 @@ function Home() {
                           }))}
                         >
                           <option value="Discovery">Discovery</option>
-                          <option value="Demo">Demo</option>
-                          <option value="Follow-up">Follow-up</option>
                           <option value="QBR">QBR</option>
+                          <option value="Follow-up">Follow-up</option>
+                          <option value="Other">Other</option>
                         </Select>
                       </Box>
                       <Box>
@@ -283,7 +300,7 @@ function Home() {
                 <VStack align="stretch" spacing={0}>
                   {/* Table Header */}
                   <Grid 
-                    templateColumns="2fr 1fr 2fr auto" 
+                    templateColumns={{ base: "1fr", md: "2fr 1fr 1fr 100px 100px 1fr" }}
                     gap={4} 
                     px={4} 
                     py={3} 
@@ -293,6 +310,8 @@ function Home() {
                     <Text fontWeight="medium" fontSize="sm" color="gray.600">Customer</Text>
                     <Text fontWeight="medium" fontSize="sm" color="gray.600">Call Type</Text>
                     <Text fontWeight="medium" fontSize="sm" color="gray.600">Summary</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Strengths</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Opportunities</Text>
                     <Text fontWeight="medium" fontSize="sm" color="gray.600">Date</Text>
                   </Grid>
                   
@@ -329,6 +348,7 @@ function Home() {
             <TranscriptUpload 
               session={session} 
               onClose={handleUploadClose}
+              onUploadComplete={refreshAnalyses}
             />
           </Box>
         </Slide>
@@ -376,27 +396,38 @@ function ActionCard({ title, description, icon, onClick }) {
 }
 
 const ActivityItem = ({ analysis }) => {
+  const strengths = analysis.results?.value_articulation?.strengths || [];
+  const opportunities = analysis.results?.value_articulation?.opportunities || [];
+
+  const strengthsTooltip = strengths.map(s => s.text).join('\n');
+  const opportunitiesTooltip = opportunities.map(o => o.text).join('\n');
+
   return (
     <Link href={`/analysis/${analysis.id}`} style={{ textDecoration: 'none' }}>
       <Grid
-        templateColumns="2fr 1fr 1fr 100px 100px"
+        templateColumns={{ base: "1fr", md: "2fr 1fr 1fr 100px 100px 1fr" }}
         gap={4}
         p={4}
         alignItems="center"
         _hover={{ bg: 'gray.50' }}
         cursor="pointer"
       >
-        <Text fontWeight="medium">{analysis.customer_name}</Text>
-        <Text color="gray.600">{analysis.call_type}</Text>
-        <Text color="gray.600">
-          {analysis.date}
-        </Text>
-        <Badge colorScheme="green" textAlign="center">
-          {analysis.results?.value_articulation?.strengths?.length || 0}
-        </Badge>
-        <Badge colorScheme="orange" textAlign="center">
-          {analysis.results?.value_articulation?.opportunities?.length || 0}
-        </Badge>
+        <Text fontWeight="medium" noOfLines={1}>{analysis.customer_name}</Text>
+        <Text color="gray.600" noOfLines={1}>{analysis.call_type}</Text>
+        <Tooltip label={analysis.results?.summary} placement="top">
+          <Text color="gray.600" noOfLines={1}>{analysis.results?.summary}</Text>
+        </Tooltip>
+        <Tooltip label={strengthsTooltip} placement="top">
+          <Badge colorScheme="green" textAlign="center">
+            {strengths.length}
+          </Badge>
+        </Tooltip>
+        <Tooltip label={opportunitiesTooltip} placement="top">
+          <Badge colorScheme="orange" textAlign="center">
+            {opportunities.length}
+          </Badge>
+        </Tooltip>
+        <Text color="gray.600" noOfLines={1}>{analysis.date}</Text>
       </Grid>
     </Link>
   );
