@@ -122,39 +122,90 @@ export async function analyzeTranscript(
     metadata
   });
 
-  const prompt = `You are an expert Customer Success Manager coach. Analyze this transcript and provide insights in the following JSON format:
+  const prompt = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Your task is to analyze a transcript from a recent customer call conducted by a Customer Success Manager (CSM) and provide targeted feedback and coaching.
+
+Here is the transcript you need to analyze:
+
+<transcript>
+{{TRANSCRIPT}}
+</transcript>
+
+Your analysis should cover the following areas:
+1. Call Summary
+2. Value Articulation
+3. Competitive Positioning
+4. Expansion Opportunities
+5. Coaching Opportunities
+6. Role Playing Scenarios
+
+For each area, wrap your thought process inside <detailed_analysis> tags before formulating your final response. Within these tags:
+a) List key quotes or moments from the transcript
+b) Identify strengths and areas for improvement
+c) Provide specific recommendations
+
+Pay close attention to specific quotes, timestamps (if available), and key moments in the conversation.
+
+When analyzing the transcript, consider the following:
+- Transitions from tactical to strategic discussions
+- Questions that uncover business challenges or priorities
+- Responses to customer concerns or objections
+- Sharing of success stories and evidence
+- Clarity of next steps and ownership
+- Effectiveness of executive-level communication
+- Addressing or overlooking risk signals
+
+Maintain a coaching tone throughout your analysis, focusing on business outcomes and customer lifetime value drivers. Balance tactical feedback with strategic guidance.
+
+After completing your analysis, provide your insights in the following JSON format:
 
 {
-  "summary": "Brief overview of the key points discussed in the call",
+  "summary": {
+    "call_type": "",
+    "customer_name": "",
+    "attendees": [],
+    "summary": [
+      {"text": ""}
+    ]
+  },
   "value_articulation": {
     "strengths": [
-      {"text": "Specific strength point identified", "timestamp": "optional timestamp if found"}
+      {"text": "", "timestamp": ""}
     ],
     "opportunities": [
-      {"text": "Specific opportunity for improvement", "timestamp": "optional timestamp if found"}
+      {"text": "", "timestamp": ""}
     ]
   },
   "competitive_positioning": {
     "strengths": [
-      {"text": "Competitive advantage mentioned", "timestamp": "optional timestamp if found"}
+      {"text": "", "timestamp": ""}
     ],
     "opportunities": [
-      {"text": "Area where competition might have advantage", "timestamp": "optional timestamp if found"}
+      {"text": "", "timestamp": ""}
     ]
   },
   "expansion_opportunities": [
-    {"description": "Specific opportunity for expansion or upsell", "timestamp": "optional timestamp if found"}
+    {"text": "", "timestamp": ""}
+  ],
+  "coaching_opportunities": [
+    {"text": ""}
+  ],
+  "role_playing": [
+    {
+      "text": "",
+      "customer_role": "",
+      "example_scenario_prompt": ""
+    }
   ]
 }
 
-TRANSCRIPT:
-\${transcript}
+Ensure that your JSON output:
+1. Includes specific, actionable insights
+2. Contains direct quotes or examples from the transcript where relevant
+3. Provides timestamps if available in the transcript
+4. Focuses on 1-2 highest impact improvements for coaching opportunities
+5. Suggests specific role-playing scenarios for skills improvement
 
-Remember to:
-1. Focus on specific, actionable insights
-2. Include direct quotes or examples from the transcript where relevant
-3. Provide timestamps if available in the transcript
-4. Return ONLY valid JSON matching the exact format above`;
+Begin your analysis now, using <detailed_analysis> tags for each section before providing the final JSON output.`;
 
   try {
     const response = await fetch('/api/analyze', {
