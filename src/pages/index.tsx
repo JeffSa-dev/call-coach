@@ -401,6 +401,7 @@ const ActivityItem = ({ analysis }) => {
 
   const strengthsTooltip = strengths.map(s => s.text).join('\n');
   const opportunitiesTooltip = opportunities.map(o => o.text).join('\n');
+  const summaryText = analysis.results?.summary?.text || '';
 
   return (
     <Link href={`/analysis/${analysis.id}`} style={{ textDecoration: 'none' }}>
@@ -414,8 +415,8 @@ const ActivityItem = ({ analysis }) => {
       >
         <Text fontWeight="medium" noOfLines={1}>{analysis.customer_name}</Text>
         <Text color="gray.600" noOfLines={1}>{analysis.call_type}</Text>
-        <Tooltip label={analysis.results?.summary} placement="top">
-          <Text color="gray.600" noOfLines={1}>{analysis.results?.summary}</Text>
+        <Tooltip label={summaryText} placement="top">
+          <Text color="gray.600" noOfLines={1}>{summaryText}</Text>
         </Tooltip>
         <Tooltip label={strengthsTooltip} placement="top">
           <Badge colorScheme="green" textAlign="center">

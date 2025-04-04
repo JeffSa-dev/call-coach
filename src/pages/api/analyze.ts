@@ -6,7 +6,8 @@ const anthropic = new Anthropic({
 });
 
 // Reduce MAX_CHARS to be well under the 200K token limit
-const MAX_CHARS = 400000; // About 100K tokens (very conservative estimate)
+// Assuming ~4 chars per token, and leaving room for the prompt template
+const MAX_CHARS = 100000; // About 25K tokens (very conservative estimate)
 
 function truncateText(text: string): string {
   console.log('Original text length:', text.length);
@@ -18,6 +19,7 @@ function truncateText(text: string): string {
   const cleanTruncated = lastPeriod > 0 ? truncated.slice(0, lastPeriod + 1) : truncated;
   
   console.log('Truncated text length:', cleanTruncated.length);
+  console.log('Estimated tokens:', Math.round(cleanTruncated.length / 4));
   return cleanTruncated;
 }
 
@@ -68,4 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       details: error.toString()
     });
   }
-} 
+}
+
+// Add API route configuration
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    }
+  }
+}; 

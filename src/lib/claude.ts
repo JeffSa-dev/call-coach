@@ -117,17 +117,28 @@ export async function analyzeTranscript(
   text: string, 
   metadata: AnalysisMetadata
 ): Promise<AnalysisResult> {
+  // Truncate text to a reasonable size (about 50K tokens)
+  const MAX_CHARS = 200000; // ~50K tokens
+  const truncatedText = text.length > MAX_CHARS 
+    ? text.slice(0, MAX_CHARS) + '...' 
+    : text;
+
+  // Add detailed logging
   console.log('Starting transcript analysis:', {
-    textLength: text.length,
+    originalLength: text.length,
+    truncatedLength: truncatedText.length,
+    estimatedTokens: Math.round(truncatedText.length / 4),
+    wasTruncated: truncatedText.length < text.length,
     metadata
   });
 
-  const prompt = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Your task is to analyze a transcript from a recent customer call conducted by a Customer Success Manager (CSM) and provide targeted feedback and coaching.
+  // Log prompt template size
+  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Your task is to analyze a transcript from a recent customer call conducted by a Customer Success Manager (CSM) and provide targeted feedback and coaching.
 
 Here is the transcript you need to analyze:
 
 <transcript>
-{{TRANSCRIPT}}
+${truncatedText}
 </transcript>
 
 Your analysis should cover the following areas:
@@ -138,93 +149,90 @@ Your analysis should cover the following areas:
 5. Coaching Opportunities
 6. Role Playing Scenarios
 
-For each area, wrap your thought process inside <detailed_analysis> tags before formulating your final response. Within these tags:
-a) List key quotes or moments from the transcript
-b) Identify strengths and areas for improvement
-c) Provide specific recommendations
-
-Pay close attention to specific quotes, timestamps (if available), and key moments in the conversation.
-
-When analyzing the transcript, consider the following:
-- Transitions from tactical to strategic discussions
-- Questions that uncover business challenges or priorities
-- Responses to customer concerns or objections
-- Sharing of success stories and evidence
-- Clarity of next steps and ownership
-- Effectiveness of executive-level communication
-- Addressing or overlooking risk signals
-
 Maintain a coaching tone throughout your analysis, focusing on business outcomes and customer lifetime value drivers. Balance tactical feedback with strategic guidance.
 
-After completing your analysis, provide your insights in the following JSON format:
+<analysis>
+[Your detailed analysis]
+</analysis>
 
+<json>
 {
   "summary": {
-    "call_type": "",
-    "customer_name": "",
-    "attendees": [],
-    "summary": [
-      {"text": ""}
-    ]
+    "call_type": "${metadata.call_type}",
+    "customer_name": "${metadata.customer_name}",
+    "summary": [{"text": ""}]
   },
   "value_articulation": {
-    "strengths": [
-      {"text": "", "timestamp": ""}
-    ],
-    "opportunities": [
-      {"text": "", "timestamp": ""}
-    ]
+    "strengths": [{"text": "", "timestamp": ""}],
+    "opportunities": [{"text": "", "timestamp": ""}]
   },
   "competitive_positioning": {
-    "strengths": [
-      {"text": "", "timestamp": ""}
-    ],
-    "opportunities": [
-      {"text": "", "timestamp": ""}
-    ]
+    "strengths": [{"text": "", "timestamp": ""}],
+    "opportunities": [{"text": "", "timestamp": ""}]
   },
-  "expansion_opportunities": [
-    {"text": "", "timestamp": ""}
-  ],
-  "coaching_opportunities": [
-    {"text": ""}
-  ],
-  "role_playing": [
-    {
-      "text": "",
-      "customer_role": "",
-      "example_scenario_prompt": ""
-    }
-  ]
-}
+  "expansion_opportunities": [{"text": "", "timestamp": ""}]
+},
+  "coaching_opportunities": [{"text": "", "timestamp": ""}]
+},
+  "role_playing": [{"text": "", "customer_role": "", "example_scenario_prompt": ""}]
+</json>
 
-Ensure that your JSON output:
-1. Includes specific, actionable insights
-2. Contains direct quotes or examples from the transcript where relevant
-3. Provides timestamps if available in the transcript
-4. Focuses on 1-2 highest impact improvements for coaching opportunities
-5. Suggests specific role-playing scenarios for skills improvement
+Focus on:
+1. Key strengths and opportunities
+2. Specific quotes with timestamps
+3. Actionable recommendations`;
 
-Begin your analysis now, using <detailed_analysis> tags for each section before providing the final JSON output.`;
+  console.log('Prompt template size:', {
+    templateLength: promptTemplate.length,
+    estimatedTokens: Math.round(promptTemplate.length / 4)
+  });
 
   try {
+    const requestBody = { text: truncatedText, metadata, prompt: promptTemplate };
+    console.log('Request body size:', {
+      bodyLength: JSON.stringify(requestBody).length,
+      estimatedTokens: Math.round(JSON.stringify(requestBody).length / 4)
+    });
+
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text, metadata, prompt })
+      body: JSON.stringify(requestBody)
     });
 
     const data = await response.json();
 
     if (!response.ok) {
       console.error('Analysis API error:', data);
+      
+      // Handle token limit error specifically
+      if (data.error?.includes('prompt is too long')) {
+        throw new Error('Transcript is too long. Please try a shorter section or contact support.');
+      }
+      
       throw new Error(data.error || 'Analysis failed');
     }
 
     try {
-      const parsedResult = JSON.parse(data.content[0].text) as AnalysisResult;
+      const responseText = data.content[0].text;
+      
+      // Extract JSON from between <json> tags
+      const jsonMatch = responseText.match(/<json>([\s\S]*?)<\/json>/);
+      if (!jsonMatch) {
+        throw new Error('No JSON section found in response');
+      }
+      
+      const jsonContent = jsonMatch[1].trim();
+      const parsedResult = JSON.parse(jsonContent) as AnalysisResult;
+      
+      // Store the detailed analysis if needed
+      const analysisMatch = responseText.match(/<analysis>([\s\S]*?)<\/analysis>/);
+      if (analysisMatch) {
+        console.log('Detailed analysis:', analysisMatch[1].trim());
+      }
+      
       return parsedResult;
     } catch (parseError) {
       console.error('Failed to parse Claude response:', data.content[0].text);
@@ -277,7 +285,7 @@ export async function getChatResponse(
       model: MODEL,
       system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
-      temperature: 0.7, // Higher temperature for more natural conversation
+      temperature: 0.9, // Higher temperature for more natural conversation
       max_tokens: 1000
     });
 
