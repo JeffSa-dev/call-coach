@@ -133,7 +133,7 @@ export async function analyzeTranscript(
   });
 
   // Log prompt template size
-  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Your task is to analyze a transcript from a recent customer call conducted by a Customer Success Manager (CSM) and provide targeted feedback and coaching.
+  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Analyze this customer call transcript and provide direct, actionable feedback speaking directly to the CSM using first-person address ("you" instead of "the CSM").
 
 Here is the transcript you need to analyze:
 
@@ -141,15 +141,100 @@ Here is the transcript you need to analyze:
 ${truncatedText}
 </transcript>
 
-Your analysis should cover the following areas:
-1. Call Summary
-2. Value Articulation
-3. Competitive Positioning
-4. Expansion Opportunities
-5. Coaching Opportunities
-6. Role Playing Scenarios
+For each observation, include specific timestamps from the call and a 1-5 score based on the following scale:
+1 = Significant improvement needed (missed critical opportunity)
+2 = Needs improvement (basic attempt made but ineffective)
+3 = Satisfactory (met basic expectations)
+4 = Strong (exceeded expectations)
+5 = Exceptional (masterful execution)
 
-Maintain a coaching tone throughout your analysis, focusing on business outcomes and customer lifetime value drivers. Balance tactical feedback with strategic guidance.
+Provide your feedback in the following format:
+
+1. Call Summary (2-3 direct sentences on overall effectiveness)
+   Overall Score: [Average of 5 section scores, rounded to 1 decimal]
+   "Overall, the call was ... You did a good job of ... You could have done better by ..."
+2. Relationship Building 
+   - Executive presence demonstration: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] demonstrate executive presence when..."
+   - Stakeholder engagement: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] engage with stakeholders when..."
+   - Next step establishment: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] establish clear next steps when..."
+   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
+3. Customer Health Assessment
+   - Understood customer's current business challenges: [Score 1-5] [timestamp]
+   - Identified success metrics that matter to the customer: [Score 1-5] [timestamp]
+   - Assessed adoption levels and usage patterns: [Score 1-5] [timestamp]
+   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
+4. Value Demonstration
+   - Business outcome connection: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] connect our product to business outcomes when..."
+   - ROI quantification: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] quantify ROI when..."
+   - Success story sharing: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] share relevant success stories when..."
+   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
+5. Strategic Account Management 
+   - Growth opportunity identification: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] identify growth opportunities when..."
+   - Renewal risk addressing: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] address renewal risks when..."
+   - Stakeholder mapping: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] map stakeholders when..."
+   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
+6. Competitive Intelligence & Positioning
+   - Competitor mentions identification: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] identify competitor mentions when..."
+   - Solution differentiation: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] differentiate our solution when..."
+   - Proactive value positioning: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] proactively position our unique value when..."
+   - Competitive risk probing: [Score 1-5] [timestamp]
+     "You [effectively/missed opportunities to] probe for competitive risks when..."
+   Section Score: [Average of 4 subsection scores, rounded to 1 decimal]  
+7. Top 3 Strengths
+   1. [Strength 1]: [timestamp]
+      "You effectively... This strengthened the customer relationship by..."
+   2. [Strength 2]: [timestamp]
+      "You effectively... This strengthened the customer relationship by..."
+   3. [Strength 3]: [timestamp]
+      "You effectively... This strengthened the customer relationship by..."
+8. Top 3 Opportunies
+   1. [Area 1]: [timestamp]
+      "You missed an opportunity to... Next time, try..."
+   2. [Area 2]: [timestamp]
+      "You missed an opportunity to... Next time, try..."
+   3. [Area 3]: [timestamp]
+      "You missed an opportunity to... Next time, try..."
+// 9. Competitive Defense Playbook
+ //  - When you hear: "[Actual customer statement about competitor from call]"
+ //    Try saying: "[Improved response that effectively positions against competitor]"
+   
+//    - Listen for these competitive signals:
+//      * [Signal 1]
+//      * [Signal 2]
+//      * [Signal 3]
+   
+//    - Key differentiators to emphasize with this account:
+//      * [Differentiator 1]: [How it specifically addresses this customer's needs]
+//      * [Differentiator 2]: [How it specifically addresses this customer's needs]
+//      * [Differentiator 3]: [How it specifically addresses this customer's needs]
+9. Role-Playing Scenario Summary: Role Playing Scenarios (specific scenarios that could be acted out to improve the call)
+10. Role-Playing Scenario Examples: Opportunity to improve
+    
+    At [timestamp], this exchange occurred:
+    Customer: "[Exact customer statement from transcript]"
+    You: "[Your exact response from transcript]"
+    
+    A more effective approach would be:
+    Customer: "[Same customer statement]"
+    You: "[Improved response with stronger competitive positioning]"
+    
+    Why This Works Better:
+    [Brief explanation of why this approach is more effective]
+
+
+Maintain a coaching tone throughout your analysis, focusing on practical advice to defend against competitive threats while building long-term value for the customer. 
 
 <analysis>
 [Your detailed analysis]
@@ -158,11 +243,21 @@ Maintain a coaching tone throughout your analysis, focusing on business outcomes
 <json>
 {
   "summary": {
-    "call_type": "${metadata.call_type}",
-    "customer_name": "${metadata.customer_name}",
     "summary": [{"text": ""}]
   },
-  "value_articulation": {
+  "relationship_building": {
+    "strengths": [{"text": "", "timestamp": ""}],
+    "opportunities": [{"text": "", "timestamp": ""}]
+  },
+  "customer_health_assessment": {
+    "strengths": [{"text": "", "timestamp": ""}],
+    "opportunities": [{"text": "", "timestamp": ""}]
+  },
+  "value_demonstration": {
+    "strengths": [{"text": "", "timestamp": ""}],
+    "opportunities": [{"text": "", "timestamp": ""}]
+  },
+  "strategic_account_management": {
     "strengths": [{"text": "", "timestamp": ""}],
     "opportunities": [{"text": "", "timestamp": ""}]
   },
@@ -170,11 +265,11 @@ Maintain a coaching tone throughout your analysis, focusing on business outcomes
     "strengths": [{"text": "", "timestamp": ""}],
     "opportunities": [{"text": "", "timestamp": ""}]
   },
-  "expansion_opportunities": [{"text": "", "timestamp": ""}]
+ "top_3_strengths": [{"text": "", "timestamp": ""}],
+ "top_3_opportunities": [{"text": "", "timestamp": ""}],
+ "role_playing_summary": [{"text": "", "timestamp": ""}],
+ "role_playing_examples": [{"text": "", "customer_role": "", "example_scenario_prompt": ""}]
 },
-  "coaching_opportunities": [{"text": "", "timestamp": ""}]
-},
-  "role_playing": [{"text": "", "customer_role": "", "example_scenario_prompt": ""}]
 </json>
 
 Focus on:
