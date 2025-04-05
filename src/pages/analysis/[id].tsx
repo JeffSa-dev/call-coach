@@ -17,6 +17,7 @@ import {
   Stack,
   Divider,
   Icon,
+  Grid,
 } from '@chakra-ui/react';
 import { FiDownload, FiChevronDown } from 'react-icons/fi';
 import { useRouter } from 'next/router';
@@ -31,7 +32,11 @@ interface Analysis {
   created_at: string;
   completed_at: string;
   results: {
-    summary: string;
+    summary: {
+      text: string;
+      call_type: string;
+      customer_name: string;
+    };
     value_articulation: {
       strengths: Array<{ text: string; timestamp?: string }>;
       opportunities: Array<{ text: string; timestamp?: string }>;
@@ -166,7 +171,7 @@ export default function AnalysisPage() {
                       Call Effectiveness Summary
                     </Text>
                     <Text color="gray.700" lineHeight="tall">
-                      {analysis.results.summary}
+                      {analysis.results.summary.text}
                     </Text>
                   </Box>
 
@@ -189,58 +194,200 @@ export default function AnalysisPage() {
 
                   <Box>
                     <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Key Strengths
+                      Analysis Overview
                     </Text>
-                    {analysis.results.value_articulation.strengths.map((strength, index) => (
-                      <Box
-                        key={index}
-                        p={4}
-                        mb={4}
-                        bg="green.50"
-                        borderLeft="4px"
-                        borderColor="green.400"
-                        rounded="md"
-                      >
-                        <Text fontWeight="bold" color="green.700" mb={2}>
-                          {strength.text} 
-                          {strength.timestamp && (
-                            <Text as="span" fontSize="sm" color="green.600" ml={2}>
-                              [{formatTimestamp(strength.timestamp)}]
-                            </Text>
-                          )}
+                    <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                      {/* Value Articulation */}
+                      <Box>
+                        <Text fontSize="md" fontWeight="semibold" mb={4} color="blue.700">
+                          Value Articulation
                         </Text>
+                        <Stack spacing={4}>
+                          <Box>
+                            <Text fontSize="sm" fontWeight="medium" mb={2} color="green.700">
+                              Strengths
+                            </Text>
+                            {analysis.results.value_articulation.strengths.map((strength, index) => (
+                              <Box
+                                key={index}
+                                p={3}
+                                mb={2}
+                                bg="green.50"
+                                borderLeft="3px"
+                                borderColor="green.400"
+                                rounded="md"
+                              >
+                                <Text fontSize="sm" color="green.700">
+                                  {strength.text}
+                                  {strength.timestamp && (
+                                    <Text as="span" fontSize="xs" color="green.600" ml={2}>
+                                      [{formatTimestamp(strength.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Box>
+                          <Box>
+                            <Text fontSize="sm" fontWeight="medium" mb={2} color="orange.700">
+                              Opportunities
+                            </Text>
+                            {analysis.results.value_articulation.opportunities.map((opportunity, index) => (
+                              <Box
+                                key={index}
+                                p={3}
+                                mb={2}
+                                bg="orange.50"
+                                borderLeft="3px"
+                                borderColor="orange.400"
+                                rounded="md"
+                              >
+                                <Text fontSize="sm" color="orange.700">
+                                  {opportunity.text}
+                                  {opportunity.timestamp && (
+                                    <Text as="span" fontSize="xs" color="orange.600" ml={2}>
+                                      [{formatTimestamp(opportunity.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Stack>
                       </Box>
-                    ))}
-                  </Box>
 
-                  <Box>
-                    <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Improvement Opportunities
-                    </Text>
-                    {analysis.results.value_articulation.opportunities.map((opportunity, index) => (
-                      <Box
-                        key={index}
-                        p={4}
-                        mb={4}
-                        bg="orange.50"
-                        borderLeft="4px"
-                        borderColor="orange.400"
-                        rounded="md"
-                      >
-                        <Text fontWeight="bold" color="orange.700" mb={2}>
-                          {opportunity.text} 
-                          {opportunity.timestamp && (
-                            <Text as="span" fontSize="sm" color="orange.600" ml={2}>
-                              [{formatTimestamp(opportunity.timestamp)}]
-                            </Text>
-                          )}
+                      {/* Competitive Positioning */}
+                      <Box>
+                        <Text fontSize="md" fontWeight="semibold" mb={4} color="blue.700">
+                          Competitive Positioning
                         </Text>
+                        <Stack spacing={4}>
+                          <Box>
+                            <Text fontSize="sm" fontWeight="medium" mb={2} color="green.700">
+                              Strengths
+                            </Text>
+                            {analysis.results.competitive_positioning.strengths.map((strength, index) => (
+                              <Box
+                                key={index}
+                                p={3}
+                                mb={2}
+                                bg="green.50"
+                                borderLeft="3px"
+                                borderColor="green.400"
+                                rounded="md"
+                              >
+                                <Text fontSize="sm" color="green.700">
+                                  {strength.text}
+                                  {strength.timestamp && (
+                                    <Text as="span" fontSize="xs" color="green.600" ml={2}>
+                                      [{formatTimestamp(strength.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Box>
+                          <Box>
+                            <Text fontSize="sm" fontWeight="medium" mb={2} color="orange.700">
+                              Opportunities
+                            </Text>
+                            {analysis.results.competitive_positioning.opportunities.map((opportunity, index) => (
+                              <Box
+                                key={index}
+                                p={3}
+                                mb={2}
+                                bg="orange.50"
+                                borderLeft="3px"
+                                borderColor="orange.400"
+                                rounded="md"
+                              >
+                                <Text fontSize="sm" color="orange.700">
+                                  {opportunity.text}
+                                  {opportunity.timestamp && (
+                                    <Text as="span" fontSize="xs" color="orange.600" ml={2}>
+                                      [{formatTimestamp(opportunity.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Stack>
                       </Box>
-                    ))}
+                    </Grid>
                   </Box>
                 </Stack>
               </TabPanel>
-              {/* Add other tab panels here */}
+
+              {/* Value Delivery Tab */}
+              <TabPanel>
+                <Stack spacing={8}>
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" mb={4}>
+                      Value Delivery Analysis
+                    </Text>
+                    <Text color="gray.700">
+                      Detailed value delivery analysis will be added here.
+                    </Text>
+                  </Box>
+                </Stack>
+              </TabPanel>
+
+              {/* Competitive Tab */}
+              <TabPanel>
+                <Stack spacing={8}>
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" mb={4}>
+                      Competitive Analysis
+                    </Text>
+                    <Text color="gray.700">
+                      Detailed competitive analysis will be added here.
+                    </Text>
+                  </Box>
+                </Stack>
+              </TabPanel>
+
+              {/* Expansion Tab */}
+              <TabPanel>
+                <Stack spacing={8}>
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" mb={4}>
+                      Expansion Opportunities
+                    </Text>
+                    <Text color="gray.700">
+                      Detailed expansion opportunities will be added here.
+                    </Text>
+                  </Box>
+                </Stack>
+              </TabPanel>
+
+              {/* Key Moments Tab */}
+              <TabPanel>
+                <Stack spacing={8}>
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" mb={4}>
+                      Key Moments
+                    </Text>
+                    <Text color="gray.700">
+                      Key moments from the call will be added here.
+                    </Text>
+                  </Box>
+                </Stack>
+              </TabPanel>
+
+              {/* Action Plan Tab */}
+              <TabPanel>
+                <Stack spacing={8}>
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" mb={4}>
+                      Action Plan
+                    </Text>
+                    <Text color="gray.700">
+                      Action plan content will be added here.
+                    </Text>
+                  </Box>
+                </Stack>
+              </TabPanel>
             </TabPanels>
           </Tabs>
         </Box>
