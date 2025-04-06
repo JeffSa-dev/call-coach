@@ -34,10 +34,20 @@ interface Analysis {
   results: {
     summary: {
       text: string;
-      call_type: string;
-      customer_name: string;
     };
-    value_articulation: {
+    relationship_building: {
+      strengths: Array<{ text: string; timestamp?: string }>;
+      opportunities: Array<{ text: string; timestamp?: string }>;
+    };
+    customer_health_assessment: {
+      strengths: Array<{ text: string; timestamp?: string }>;
+      opportunities: Array<{ text: string; timestamp?: string }>;
+    };
+    value_demonstration: {
+      strengths: Array<{ text: string; timestamp?: string }>;
+      opportunities: Array<{ text: string; timestamp?: string }>;
+    };
+    strategic_account_management: {
       strengths: Array<{ text: string; timestamp?: string }>;
       opportunities: Array<{ text: string; timestamp?: string }>;
     };
@@ -45,7 +55,10 @@ interface Analysis {
       strengths: Array<{ text: string; timestamp?: string }>;
       opportunities: Array<{ text: string; timestamp?: string }>;
     };
-    expansion_opportunities: Array<{ description: string; timestamp?: string }>;
+    top_3_strengths: Array<{ text: string; timestamp?: string }>;
+    top_3_opportunities: Array<{ text: string; timestamp?: string }>;
+    role_playing_summary: Array<{ text: string; timestamp?: string }>;
+    role_playing_examples: Array<{ text: string; customer_role: string; example_scenario_prompt: string }>;
   };
 }
 
@@ -155,10 +168,6 @@ export default function AnalysisPage() {
           <Tabs>
             <TabList px={6}>
               <Tab fontWeight="semibold">Summary</Tab>
-              <Tab>Value Delivery</Tab>
-              <Tab>Competitive</Tab>
-              <Tab>Expansion</Tab>
-              <Tab>Key Moments</Tab>
               <Tab>Action Plan</Tab>
             </TabList>
 
@@ -166,6 +175,7 @@ export default function AnalysisPage() {
               <TabPanel>
                 {/* Summary Content */}
                 <Stack spacing={8}>
+                  {/* Call Summary */}
                   <Box>
                     <Text fontSize="lg" fontWeight="bold" mb={4}>
                       Call Effectiveness Summary
@@ -177,6 +187,7 @@ export default function AnalysisPage() {
 
                   <Divider />
 
+                  {/* Call Context */}
                   <Box>
                     <Text fontSize="lg" fontWeight="bold" mb={4}>
                       Call Context
@@ -192,186 +203,412 @@ export default function AnalysisPage() {
                     </Box>
                   </Box>
 
-                  <Box>
-                    <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Analysis Overview
-                    </Text>
-                    <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-                      {/* Value Articulation */}
-                      <Box>
-                        <Text fontSize="md" fontWeight="semibold" mb={4} color="blue.700">
-                          Value Articulation
-                        </Text>
-                        <Stack spacing={4}>
-                          <Box>
-                            <Text fontSize="sm" fontWeight="medium" mb={2} color="green.700">
-                              Strengths
+                  {/* Top 3 Strengths & Opportunities */}
+                  <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4} color="green.700">
+                        Top 3 Strengths
+                      </Text>
+                      <Stack spacing={4}>
+                        {analysis.results.top_3_strengths.map((strength, index) => (
+                          <Box
+                            key={index}
+                            p={4}
+                            bg="green.50"
+                            borderLeft="4px"
+                            borderColor="green.400"
+                            rounded="md"
+                          >
+                            <Text fontWeight="bold" color="green.700" mb={2}>
+                              {index + 1}. {strength.text}
+                              {strength.timestamp && (
+                                <Text as="span" fontSize="sm" color="green.600" ml={2}>
+                                  [{formatTimestamp(strength.timestamp)}]
+                                </Text>
+                              )}
                             </Text>
-                            {analysis.results.value_articulation.strengths.map((strength, index) => (
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4} color="orange.700">
+                        Top 3 Opportunities
+                      </Text>
+                      <Stack spacing={4}>
+                        {analysis.results.top_3_opportunities.map((opportunity, index) => (
+                          <Box
+                            key={index}
+                            p={4}
+                            bg="orange.50"
+                            borderLeft="4px"
+                            borderColor="orange.400"
+                            rounded="md"
+                          >
+                            <Text fontWeight="bold" color="orange.700" mb={2}>
+                              {index + 1}. {opportunity.text}
+                              {opportunity.timestamp && (
+                                <Text as="span" fontSize="sm" color="orange.600" ml={2}>
+                                  [{formatTimestamp(opportunity.timestamp)}]
+                                </Text>
+                              )}
+                            </Text>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Grid>
+
+                  <Divider />
+
+                  {/* Detailed Analysis Sections */}
+                  <Stack spacing={8}>
+                    {/* Relationship Building */}
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4}>
+                        Relationship Building
+                      </Text>
+                      <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="green.700">
+                            Strengths
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.relationship_building.strengths.map((strength, index) => (
                               <Box
                                 key={index}
-                                p={3}
-                                mb={2}
+                                p={4}
                                 bg="green.50"
-                                borderLeft="3px"
+                                borderLeft="4px"
                                 borderColor="green.400"
                                 rounded="md"
                               >
-                                <Text fontSize="sm" color="green.700">
+                                <Text color="green.700">
                                   {strength.text}
                                   {strength.timestamp && (
-                                    <Text as="span" fontSize="xs" color="green.600" ml={2}>
+                                    <Text as="span" fontSize="sm" color="green.600" ml={2}>
                                       [{formatTimestamp(strength.timestamp)}]
                                     </Text>
                                   )}
                                 </Text>
                               </Box>
                             ))}
-                          </Box>
-                          <Box>
-                            <Text fontSize="sm" fontWeight="medium" mb={2} color="orange.700">
-                              Opportunities
-                            </Text>
-                            {analysis.results.value_articulation.opportunities.map((opportunity, index) => (
+                          </Stack>
+                        </Box>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="orange.700">
+                            Opportunities
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.relationship_building.opportunities.map((opportunity, index) => (
                               <Box
                                 key={index}
-                                p={3}
-                                mb={2}
+                                p={4}
                                 bg="orange.50"
-                                borderLeft="3px"
+                                borderLeft="4px"
                                 borderColor="orange.400"
                                 rounded="md"
                               >
-                                <Text fontSize="sm" color="orange.700">
+                                <Text color="orange.700">
                                   {opportunity.text}
                                   {opportunity.timestamp && (
-                                    <Text as="span" fontSize="xs" color="orange.600" ml={2}>
+                                    <Text as="span" fontSize="sm" color="orange.600" ml={2}>
                                       [{formatTimestamp(opportunity.timestamp)}]
                                     </Text>
                                   )}
                                 </Text>
                               </Box>
                             ))}
-                          </Box>
-                        </Stack>
-                      </Box>
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    </Box>
 
-                      {/* Competitive Positioning */}
-                      <Box>
-                        <Text fontSize="md" fontWeight="semibold" mb={4} color="blue.700">
-                          Competitive Positioning
-                        </Text>
-                        <Stack spacing={4}>
-                          <Box>
-                            <Text fontSize="sm" fontWeight="medium" mb={2} color="green.700">
-                              Strengths
-                            </Text>
+                    {/* Customer Health Assessment */}
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4}>
+                        Customer Health Assessment
+                      </Text>
+                      <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="green.700">
+                            Strengths
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.customer_health_assessment.strengths.map((strength, index) => (
+                              <Box
+                                key={index}
+                                p={4}
+                                bg="green.50"
+                                borderLeft="4px"
+                                borderColor="green.400"
+                                rounded="md"
+                              >
+                                <Text color="green.700">
+                                  {strength.text}
+                                  {strength.timestamp && (
+                                    <Text as="span" fontSize="sm" color="green.600" ml={2}>
+                                      [{formatTimestamp(strength.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="orange.700">
+                            Opportunities
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.customer_health_assessment.opportunities.map((opportunity, index) => (
+                              <Box
+                                key={index}
+                                p={4}
+                                bg="orange.50"
+                                borderLeft="4px"
+                                borderColor="orange.400"
+                                rounded="md"
+                              >
+                                <Text color="orange.700">
+                                  {opportunity.text}
+                                  {opportunity.timestamp && (
+                                    <Text as="span" fontSize="sm" color="orange.600" ml={2}>
+                                      [{formatTimestamp(opportunity.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    </Box>
+
+                    {/* Value Demonstration */}
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4}>
+                        Value Demonstration
+                      </Text>
+                      <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="green.700">
+                            Strengths
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.value_demonstration.strengths.map((strength, index) => (
+                              <Box
+                                key={index}
+                                p={4}
+                                bg="green.50"
+                                borderLeft="4px"
+                                borderColor="green.400"
+                                rounded="md"
+                              >
+                                <Text color="green.700">
+                                  {strength.text}
+                                  {strength.timestamp && (
+                                    <Text as="span" fontSize="sm" color="green.600" ml={2}>
+                                      [{formatTimestamp(strength.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="orange.700">
+                            Opportunities
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.value_demonstration.opportunities.map((opportunity, index) => (
+                              <Box
+                                key={index}
+                                p={4}
+                                bg="orange.50"
+                                borderLeft="4px"
+                                borderColor="orange.400"
+                                rounded="md"
+                              >
+                                <Text color="orange.700">
+                                  {opportunity.text}
+                                  {opportunity.timestamp && (
+                                    <Text as="span" fontSize="sm" color="orange.600" ml={2}>
+                                      [{formatTimestamp(opportunity.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    </Box>
+
+                    {/* Strategic Account Management */}
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4}>
+                        Strategic Account Management
+                      </Text>
+                      <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="green.700">
+                            Strengths
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.strategic_account_management.strengths.map((strength, index) => (
+                              <Box
+                                key={index}
+                                p={4}
+                                bg="green.50"
+                                borderLeft="4px"
+                                borderColor="green.400"
+                                rounded="md"
+                              >
+                                <Text color="green.700">
+                                  {strength.text}
+                                  {strength.timestamp && (
+                                    <Text as="span" fontSize="sm" color="green.600" ml={2}>
+                                      [{formatTimestamp(strength.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="orange.700">
+                            Opportunities
+                          </Text>
+                          <Stack spacing={4}>
+                            {analysis.results.strategic_account_management.opportunities.map((opportunity, index) => (
+                              <Box
+                                key={index}
+                                p={4}
+                                bg="orange.50"
+                                borderLeft="4px"
+                                borderColor="orange.400"
+                                rounded="md"
+                              >
+                                <Text color="orange.700">
+                                  {opportunity.text}
+                                  {opportunity.timestamp && (
+                                    <Text as="span" fontSize="sm" color="orange.600" ml={2}>
+                                      [{formatTimestamp(opportunity.timestamp)}]
+                                    </Text>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    </Box>
+
+                    {/* Competitive Positioning */}
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4}>
+                        Competitive Positioning
+                      </Text>
+                      <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="green.700">
+                            Strengths
+                          </Text>
+                          <Stack spacing={4}>
                             {analysis.results.competitive_positioning.strengths.map((strength, index) => (
                               <Box
                                 key={index}
-                                p={3}
-                                mb={2}
+                                p={4}
                                 bg="green.50"
-                                borderLeft="3px"
+                                borderLeft="4px"
                                 borderColor="green.400"
                                 rounded="md"
                               >
-                                <Text fontSize="sm" color="green.700">
+                                <Text color="green.700">
                                   {strength.text}
                                   {strength.timestamp && (
-                                    <Text as="span" fontSize="xs" color="green.600" ml={2}>
+                                    <Text as="span" fontSize="sm" color="green.600" ml={2}>
                                       [{formatTimestamp(strength.timestamp)}]
                                     </Text>
                                   )}
                                 </Text>
                               </Box>
                             ))}
-                          </Box>
-                          <Box>
-                            <Text fontSize="sm" fontWeight="medium" mb={2} color="orange.700">
-                              Opportunities
-                            </Text>
+                          </Stack>
+                        </Box>
+                        <Box>
+                          <Text fontSize="md" fontWeight="semibold" mb={4} color="orange.700">
+                            Opportunities
+                          </Text>
+                          <Stack spacing={4}>
                             {analysis.results.competitive_positioning.opportunities.map((opportunity, index) => (
                               <Box
                                 key={index}
-                                p={3}
-                                mb={2}
+                                p={4}
                                 bg="orange.50"
-                                borderLeft="3px"
+                                borderLeft="4px"
                                 borderColor="orange.400"
                                 rounded="md"
                               >
-                                <Text fontSize="sm" color="orange.700">
+                                <Text color="orange.700">
                                   {opportunity.text}
                                   {opportunity.timestamp && (
-                                    <Text as="span" fontSize="xs" color="orange.600" ml={2}>
+                                    <Text as="span" fontSize="sm" color="orange.600" ml={2}>
                                       [{formatTimestamp(opportunity.timestamp)}]
                                     </Text>
                                   )}
                                 </Text>
                               </Box>
                             ))}
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    </Box>
+
+                    {/* Role-Playing Scenarios */}
+                    <Box>
+                      <Text fontSize="lg" fontWeight="bold" mb={4}>
+                        Role-Playing Scenarios
+                      </Text>
+                      <Stack spacing={6}>
+                        {analysis.results.role_playing_examples.map((example, index) => (
+                          <Box
+                            key={index}
+                            p={6}
+                            bg="blue.50"
+                            borderLeft="4px"
+                            borderColor="blue.400"
+                            rounded="md"
+                          >
+                            <Text fontSize="md" fontWeight="semibold" color="blue.700" mb={4}>
+                              Scenario {index + 1}
+                            </Text>
+                            <Stack spacing={4}>
+                              <Box>
+                                <Text fontWeight="medium" color="blue.700" mb={2}>
+                                  Customer Role: {example.customer_role}
+                                </Text>
+                                <Text color="blue.700">
+                                  {example.text}
+                                </Text>
+                              </Box>
+                              <Box>
+                                <Text fontWeight="medium" color="blue.700" mb={2}>
+                                  Example Prompt:
+                                </Text>
+                                <Text color="blue.700">
+                                  {example.example_scenario_prompt}
+                                </Text>
+                              </Box>
+                            </Stack>
                           </Box>
-                        </Stack>
-                      </Box>
-                    </Grid>
-                  </Box>
-                </Stack>
-              </TabPanel>
-
-              {/* Value Delivery Tab */}
-              <TabPanel>
-                <Stack spacing={8}>
-                  <Box>
-                    <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Value Delivery Analysis
-                    </Text>
-                    <Text color="gray.700">
-                      Detailed value delivery analysis will be added here.
-                    </Text>
-                  </Box>
-                </Stack>
-              </TabPanel>
-
-              {/* Competitive Tab */}
-              <TabPanel>
-                <Stack spacing={8}>
-                  <Box>
-                    <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Competitive Analysis
-                    </Text>
-                    <Text color="gray.700">
-                      Detailed competitive analysis will be added here.
-                    </Text>
-                  </Box>
-                </Stack>
-              </TabPanel>
-
-              {/* Expansion Tab */}
-              <TabPanel>
-                <Stack spacing={8}>
-                  <Box>
-                    <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Expansion Opportunities
-                    </Text>
-                    <Text color="gray.700">
-                      Detailed expansion opportunities will be added here.
-                    </Text>
-                  </Box>
-                </Stack>
-              </TabPanel>
-
-              {/* Key Moments Tab */}
-              <TabPanel>
-                <Stack spacing={8}>
-                  <Box>
-                    <Text fontSize="lg" fontWeight="bold" mb={4}>
-                      Key Moments
-                    </Text>
-                    <Text color="gray.700">
-                      Key moments from the call will be added here.
-                    </Text>
-                  </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Stack>
                 </Stack>
               </TabPanel>
 

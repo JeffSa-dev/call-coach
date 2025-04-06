@@ -15,6 +15,7 @@ import {
     title: string
     customer_name: string
     call_type: string
+    csm_name: string
   }
   
   interface TranscriptUploadProps {
@@ -40,7 +41,8 @@ import {
     const [formData, setFormData] = useState<UploadFormData>({
       title: '',
       customer_name: '',
-      call_type: ''
+      call_type: '',
+      csm_name: ''
     })
   
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -53,7 +55,7 @@ import {
         return
       }
   
-      if (!formData.title || !formData.customer_name || !formData.call_type) {
+      if (!formData.title || !formData.customer_name || !formData.call_type || !formData.csm_name) {
         toast({
           title: 'Missing information',
           description: 'Please fill in all required fields',
@@ -119,7 +121,8 @@ import {
               return analyzeTranscript(text, {
                 customer_name: formData.customer_name,
                 call_type: formData.call_type,
-                objectives: 'Analyze customer call'
+                objectives: 'Analyze customer call',
+                csm_name: formData.csm_name
               });
             })
           ])
@@ -156,7 +159,8 @@ import {
           setFormData({
             title: '',
             customer_name: '',
-            call_type: ''
+            call_type: '',
+            csm_name: ''
           })
           onClose()
           onUploadComplete?.()
@@ -245,6 +249,16 @@ import {
               onChange={(e) => setFormData(f => ({ ...f, customer_name: e.target.value }))}
               placeholder="Acme Corp"
             />
+          </FormControl>
+  
+          <FormControl isRequired mb={4}>
+            <FormLabel>CSM Name</FormLabel>
+            <Input
+              value={formData.csm_name}
+              onChange={(e) => setFormData(f => ({ ...f, csm_name: e.target.value }))}
+              placeholder="John Smith"
+            />
+            <FormHelperText>Your name as the Customer Success Manager</FormHelperText>
           </FormControl>
   
           <FormControl isRequired mb={4}>

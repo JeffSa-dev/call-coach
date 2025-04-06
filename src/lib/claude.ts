@@ -8,19 +8,37 @@ interface AnalysisMetadata {
   customer_name: string;
   call_type: string;
   objectives: string;
+  csm_name: string;
 }
 
 interface AnalysisResult {
-  summary: string;
-  value_articulation: {
-    strengths: Array<{ text: string; timestamp?: string }>;
-    opportunities: Array<{ text: string; timestamp?: string }>;
+  summary: {
+    text: string;
+  };
+  relationship_building: {
+    strengths: Array<{ text: string; timestamp?: string; quote?: string }>;
+    opportunities: Array<{ text: string; timestamp?: string; quote?: string }>;
+  };
+  customer_health_assessment: {
+    strengths: Array<{ text: string; timestamp?: string; quote?: string }>;
+    opportunities: Array<{ text: string; timestamp?: string; quote?: string }>;
+  };
+  value_demonstration: {
+    strengths: Array<{ text: string; timestamp?: string; quote?: string }>;
+    opportunities: Array<{ text: string; timestamp?: string; quote?: string }>;
+  };
+  strategic_account_management: {
+    strengths: Array<{ text: string; timestamp?: string; quote?: string }>;
+    opportunities: Array<{ text: string; timestamp?: string; quote?: string }>;
   };
   competitive_positioning: {
-    strengths: Array<{ text: string; timestamp?: string }>;
-    opportunities: Array<{ text: string; timestamp?: string }>;
+    strengths: Array<{ text: string; timestamp?: string; quote?: string }>;
+    opportunities: Array<{ text: string; timestamp?: string; quote?: string }>;
   };
-  expansion_opportunities: Array<{ description: string; timestamp?: string }>;
+  top_3_strengths: Array<{ text: string; timestamp?: string; quote?: string }>;
+  top_3_opportunities: Array<{ text: string; timestamp?: string; quote?: string }>;
+  role_playing_summary: Array<{ text: string; timestamp?: string; quote?: string }>;
+  role_playing_examples: Array<{ text: string; customer_role: string; example_scenario_prompt: string }>;
 }
 
 // Types for coaching conversation
@@ -35,6 +53,7 @@ export type TranscriptMetadata = {
   participants: number;
   context?: string;
   meetingType?: string;
+  csm_name: string;
 };
 
 // Rate limiting configuration - more specific rules
@@ -117,6 +136,11 @@ export async function analyzeTranscript(
   text: string, 
   metadata: AnalysisMetadata
 ): Promise<AnalysisResult> {
+  // Validate required fields
+  if (!metadata.csm_name?.trim()) {
+    throw new Error('CSM name is required for analysis');
+  }
+
   // Truncate text to a reasonable size (about 50K tokens)
   const MAX_CHARS = 200000; // ~50K tokens
   const truncatedText = text.length > MAX_CHARS 
@@ -129,11 +153,14 @@ export async function analyzeTranscript(
     truncatedLength: truncatedText.length,
     estimatedTokens: Math.round(truncatedText.length / 4),
     wasTruncated: truncatedText.length < text.length,
-    metadata
+    metadata: {
+      ...metadata,
+      csm_name: metadata.csm_name.trim() // Log trimmed name
+    }
   });
 
   // Log prompt template size
-  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Analyze this customer call transcript and provide direct, actionable feedback speaking directly to the CSM using first-person address ("you" instead of "the CSM").
+  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Analyze this customer call transcript and provide structured feedback in JSON format. Speak directly to ${metadata.csm_name} using first-person address ("you" instead of "the CSM").
 
 Here is the transcript you need to analyze:
 
@@ -141,141 +168,164 @@ Here is the transcript you need to analyze:
 ${truncatedText}
 </transcript>
 
-For each observation, include specific timestamps from the call and a 1-5 score based on the following scale:
-1 = Significant improvement needed (missed critical opportunity)
-2 = Needs improvement (basic attempt made but ineffective)
-3 = Satisfactory (met basic expectations)
-4 = Strong (exceeded expectations)
-5 = Exceptional (masterful execution)
+CRITICAL REQUIREMENTS:
+1. Your response MUST be a valid JSON object
+2. For quotes, use the EXACT text from the transcript - do not encode or transform it
+3. NEVER fabricate quotes - use exact quotes from the transcript
+4. Include timestamps for each observation
+5. Assign scores (1-5) based on this scale:
+   1 = Significant improvement needed (missed critical opportunity)
+   2 = Needs improvement (basic attempt made but ineffective)
+   3 = Satisfactory (met basic expectations)
+   4 = Strong (exceeded expectations)
+   5 = Exceptional (masterful execution)
+6. If a particular area or skill was not relevant or not covered during the call, indicate this by using "N/A" in the text field and null for the score
 
-Provide your feedback in the following format:
+For example, if there were no competitor mentions during the call:
 
-1. Call Summary (2-3 direct sentences on overall effectiveness)
-   Overall Score: [Average of 5 section scores, rounded to 1 decimal]
-   "Overall, the call was ... You did a good job of ... You could have done better by ..."
-2. Relationship Building 
-   - Executive presence demonstration: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] demonstrate executive presence when..."
-   - Stakeholder engagement: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] engage with stakeholders when..."
-   - Next step establishment: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] establish clear next steps when..."
-   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
-3. Customer Health Assessment
-   - Understood customer's current business challenges: [Score 1-5] [timestamp]
-   - Identified success metrics that matter to the customer: [Score 1-5] [timestamp]
-   - Assessed adoption levels and usage patterns: [Score 1-5] [timestamp]
-   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
-4. Value Demonstration
-   - Business outcome connection: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] connect our product to business outcomes when..."
-   - ROI quantification: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] quantify ROI when..."
-   - Success story sharing: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] share relevant success stories when..."
-   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
-5. Strategic Account Management 
-   - Growth opportunity identification: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] identify growth opportunities when..."
-   - Renewal risk addressing: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] address renewal risks when..."
-   - Stakeholder mapping: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] map stakeholders when..."
-   Section Score: [Average of 3 subsection scores, rounded to 1 decimal]
-6. Competitive Intelligence & Positioning
-   - Competitor mentions identification: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] identify competitor mentions when..."
-   - Solution differentiation: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] differentiate our solution when..."
-   - Proactive value positioning: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] proactively position our unique value when..."
-   - Competitive risk probing: [Score 1-5] [timestamp]
-     "You [effectively/missed opportunities to] probe for competitive risks when..."
-   Section Score: [Average of 4 subsection scores, rounded to 1 decimal]  
-7. Top 3 Strengths
-   1. [Strength 1]: [timestamp]
-      "You effectively... This strengthened the customer relationship by..."
-   2. [Strength 2]: [timestamp]
-      "You effectively... This strengthened the customer relationship by..."
-   3. [Strength 3]: [timestamp]
-      "You effectively... This strengthened the customer relationship by..."
-8. Top 3 Opportunies
-   1. [Area 1]: [timestamp]
-      "You missed an opportunity to... Next time, try..."
-   2. [Area 2]: [timestamp]
-      "You missed an opportunity to... Next time, try..."
-   3. [Area 3]: [timestamp]
-      "You missed an opportunity to... Next time, try..."
-// 9. Competitive Defense Playbook
- //  - When you hear: "[Actual customer statement about competitor from call]"
- //    Try saying: "[Improved response that effectively positions against competitor]"
-   
-//    - Listen for these competitive signals:
-//      * [Signal 1]
-//      * [Signal 2]
-//      * [Signal 3]
-   
-//    - Key differentiators to emphasize with this account:
-//      * [Differentiator 1]: [How it specifically addresses this customer's needs]
-//      * [Differentiator 2]: [How it specifically addresses this customer's needs]
-//      * [Differentiator 3]: [How it specifically addresses this customer's needs]
-9. Role-Playing Scenario Summary: Role Playing Scenarios (specific scenarios that could be acted out to improve the call)
-10. Role-Playing Scenario Examples: Opportunity to improve
-    
-    At [timestamp], this exchange occurred:
-    Customer: "[Exact customer statement from transcript]"
-    You: "[Your exact response from transcript]"
-    
-    A more effective approach would be:
-    Customer: "[Same customer statement]"
-    You: "[Improved response with stronger competitive positioning]"
-    
-    Why This Works Better:
-    [Brief explanation of why this approach is more effective]
+Competitive Intelligence & Positioning
+- Competitor mentions identification: N/A
+  "This topic did not come up during the call."
+  Quote: N/A
 
+IMPORTANT QUOTE HANDLING:
+- Use the exact text from the transcript for quotes
+- Do not encode or transform the text
+- Do not use Unicode escape sequences
+- Do not use HTML entities
+- Keep the original punctuation and spacing
 
-Maintain a coaching tone throughout your analysis, focusing on practical advice to defend against competitive threats while building long-term value for the customer. 
+Provide your analysis in this exact JSON structure:
 
-<analysis>
-[Your detailed analysis]
-</analysis>
-
-<json>
 {
   "summary": {
-    "summary": [{"text": ""}]
+    "text": "Overall call summary (2-3 sentences)",
+    "score": 0.0
   },
   "relationship_building": {
-    "strengths": [{"text": "", "timestamp": ""}],
-    "opportunities": [{"text": "", "timestamp": ""}]
+    "score": 0.0,
+    "strengths": [
+      {
+        "text": "Description of strength",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ],
+    "opportunities": [
+      {
+        "text": "Description of opportunity",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ]
   },
   "customer_health_assessment": {
-    "strengths": [{"text": "", "timestamp": ""}],
-    "opportunities": [{"text": "", "timestamp": ""}]
+    "score": 0.0,
+    "strengths": [
+      {
+        "text": "Description of strength",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ],
+    "opportunities": [
+      {
+        "text": "Description of opportunity",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ]
   },
   "value_demonstration": {
-    "strengths": [{"text": "", "timestamp": ""}],
-    "opportunities": [{"text": "", "timestamp": ""}]
+    "score": 0.0,
+    "strengths": [
+      {
+        "text": "Description of strength",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ],
+    "opportunities": [
+      {
+        "text": "Description of opportunity",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ]
   },
   "strategic_account_management": {
-    "strengths": [{"text": "", "timestamp": ""}],
-    "opportunities": [{"text": "", "timestamp": ""}]
+    "score": 0.0,
+    "strengths": [
+      {
+        "text": "Description of strength",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ],
+    "opportunities": [
+      {
+        "text": "Description of opportunity",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ]
   },
   "competitive_positioning": {
-    "strengths": [{"text": "", "timestamp": ""}],
-    "opportunities": [{"text": "", "timestamp": ""}]
+    "score": 0.0,
+    "strengths": [
+      {
+        "text": "Description of strength",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ],
+    "opportunities": [
+      {
+        "text": "Description of opportunity",
+        "timestamp": "timestamp from call",
+        "quote": "exact quote from transcript"
+      }
+    ]
   },
- "top_3_strengths": [{"text": "", "timestamp": ""}],
- "top_3_opportunities": [{"text": "", "timestamp": ""}],
- "role_playing_summary": [{"text": "", "timestamp": ""}],
- "role_playing_examples": [{"text": "", "customer_role": "", "example_scenario_prompt": ""}]
-},
-</json>
+  "top_3_strengths": [
+    {
+      "text": "Description of strength",
+      "timestamp": "timestamp from call",
+      "quote": "exact quote from transcript"
+    }
+  ],
+  "top_3_opportunities": [
+    {
+      "text": "Description of opportunity",
+      "timestamp": "timestamp from call",
+      "quote": "exact quote from transcript"
+    }
+  ],
+  "role_playing_summary": [
+    {
+      "text": "Description of role playing scenario",
+      "timestamp": "timestamp from call",
+      "quote": "exact quote from transcript"
+    }
+  ],
+  "role_playing_examples": [
+    {
+      "text": "Description of example",
+      "timestamp": "timestamp from call",
+      "customer_statement": "exact quote from transcript",
+      "csm_response": "exact quote from transcript",
+      "improved_response": "suggested improved response",
+      "explanation": "explanation of why this is better"
+    }
+  ]
+}
 
-Focus on:
-1. Key strengths and opportunities
-2. Specific quotes with timestamps
-3. Actionable recommendations`;
+Remember:
+1. Your response must be ONLY the JSON object
+2. Do not include any text outside the JSON structure
+3. All quotes must be exact from the transcript
+4. Include timestamps for each observation
+5. Calculate section scores as averages of their subsections`;
 
   console.log('Prompt template size:', {
     templateLength: promptTemplate.length,
@@ -313,24 +363,74 @@ Focus on:
     try {
       const responseText = data.content[0].text;
       
-      // Extract JSON from between <json> tags
-      const jsonMatch = responseText.match(/<json>([\s\S]*?)<\/json>/);
-      if (!jsonMatch) {
-        throw new Error('No JSON section found in response');
+      // Clean the response text more carefully
+      const cleanJson = responseText
+        .replace(/\n/g, ' ') // Remove newlines
+        .replace(/\r/g, '') // Remove carriage returns
+        .replace(/\t/g, ' ') // Replace tabs with spaces
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .replace(/\\n/g, ' ') // Replace escaped newlines
+        .replace(/\\r/g, '') // Replace escaped carriage returns
+        .replace(/\\t/g, ' ') // Replace escaped tabs
+        .trim();
+
+      // Try to parse the cleaned response
+      try {
+        const parsedResult = JSON.parse(cleanJson) as AnalysisResult;
+        
+        // Validate required fields
+        const requiredFields = [
+          'summary',
+          'relationship_building',
+          'customer_health_assessment',
+          'value_demonstration',
+          'strategic_account_management',
+          'competitive_positioning',
+          'top_3_strengths',
+          'top_3_opportunities',
+          'role_playing_summary',
+          'role_playing_examples'
+        ];
+
+        const missingFields = requiredFields.filter(field => !(field in parsedResult));
+        if (missingFields.length > 0) {
+          console.error('Missing required fields:', missingFields);
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
+        return parsedResult;
+      } catch (parseError) {
+        console.error('Failed to parse cleaned JSON:', {
+          originalText: responseText,
+          cleanedText: cleanJson,
+          error: parseError
+        });
+        
+        // If direct parse fails, try to extract from tags
+        const jsonMatch = responseText.match(/<json>([\s\S]*?)<\/json>/);
+        if (!jsonMatch) {
+          // Try one more time with the original text
+          try {
+            const parsedResult = JSON.parse(responseText) as AnalysisResult;
+            return parsedResult;
+          } catch (finalError) {
+            console.error('Failed to parse original response:', {
+              responseText,
+              error: finalError
+            });
+            throw new Error('No valid JSON found in response');
+          }
+        }
+        
+        const jsonContent = jsonMatch[1].trim();
+        const parsedResult = JSON.parse(jsonContent) as AnalysisResult;
+        return parsedResult;
       }
-      
-      const jsonContent = jsonMatch[1].trim();
-      const parsedResult = JSON.parse(jsonContent) as AnalysisResult;
-      
-      // Store the detailed analysis if needed
-      const analysisMatch = responseText.match(/<analysis>([\s\S]*?)<\/analysis>/);
-      if (analysisMatch) {
-        console.log('Detailed analysis:', analysisMatch[1].trim());
-      }
-      
-      return parsedResult;
     } catch (parseError) {
-      console.error('Failed to parse Claude response:', data.content[0].text);
+      console.error('Failed to parse Claude response:', {
+        responseText: data.content[0].text,
+        error: parseError
+      });
       throw new Error('Failed to parse analysis results');
     }
 
@@ -356,13 +456,13 @@ export async function getChatResponse(
     systemPrompt += `
       CONTEXT FROM PREVIOUS CALL ANALYSIS:
       
-      Overall assessment: ${analysisContext.summary}
+      Overall assessment: ${analysisContext.summary.text}
       
       Value articulation strengths:
-      ${analysisContext.value_articulation.strengths.map(s => `- ${s.text}`).join('\n')}
+      ${analysisContext.value_demonstration.strengths.map(s => `- ${s.text}`).join('\n')}
       
       Value articulation opportunities:
-      ${analysisContext.value_articulation.opportunities.map(o => `- ${o.text}`).join('\n')}
+      ${analysisContext.value_demonstration.opportunities.map(o => `- ${o.text}`).join('\n')}
       
       Competitive positioning strengths:
       ${analysisContext.competitive_positioning.strengths.map(s => `- ${s.text}`).join('\n')}
@@ -371,7 +471,7 @@ export async function getChatResponse(
       ${analysisContext.competitive_positioning.opportunities.map(o => `- ${o.text}`).join('\n')}
       
       Expansion opportunities:
-      ${analysisContext.expansion_opportunities.map(o => `- ${o.description}`).join('\n')}
+      ${analysisContext.role_playing_examples.map(o => `- ${o.example_scenario_prompt}`).join('\n')}
     `;
   }
 

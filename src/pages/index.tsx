@@ -142,22 +142,22 @@ function Home() {
     <Flex>
       <Sidebar />
       <Box flex="1" ml={{ base: 0, md: "60px" }} transition="margin 0.3s">
-        <Container maxW="container.xl" py={8}>
-          <VStack spacing={8} align="stretch">
+    <Container maxW="container.xl" py={8}>
+      <VStack spacing={8} align="stretch">
             {/* Header Section with Upload Button */}
-            <Flex justify="space-between" align="center">
-              <Box>
-                <Text fontSize="2xl" fontWeight="bold" mb={2}>Welcome, {session.user.email}</Text>
-                <Text color="gray.600">Manage and analyze your calls</Text>
-              </Box>
-              <Button
-                leftIcon={<FiUpload />}
-                colorScheme="blue"
-                onClick={handleUpload}
-              >
-                Upload New Call
-              </Button>
-            </Flex>
+        <Flex justify="space-between" align="center">
+          <Box>
+            <Text fontSize="2xl" fontWeight="bold" mb={2}>Welcome, {session.user.email}</Text>
+            <Text color="gray.600">Manage and analyze your calls</Text>
+          </Box>
+          <Button
+            leftIcon={<FiUpload />}
+            colorScheme="blue"
+            onClick={handleUpload}
+          >
+            Upload New Call
+          </Button>
+        </Flex>
 
             {/* CallCoach Banner */}
             <Box 
@@ -196,8 +196,8 @@ function Home() {
               </VStack>
             </Box>
 
-            {/* Recent Activity */}
-            <Box p={6} borderRadius="lg" boxShadow="base" bg={bgColor}>
+        {/* Recent Activity */}
+        <Box p={6} borderRadius="lg" boxShadow="base" bg={bgColor}>
               <Flex justify="space-between" align="center" mb={6}>
                 <Flex align="center" gap={2}>
                   <Text fontSize="lg" fontWeight="bold">Recent Activity</Text>
@@ -321,13 +321,13 @@ function Home() {
                       <ActivityItem key={analysis.id} analysis={analysis} />
                     ))}
                   </VStack>
-                </VStack>
-              ) : (
-                <Text color="gray.500">No recent activity</Text>
-              )}
-            </Box>
-          </VStack>
-        </Container>
+            </VStack>
+          ) : (
+            <Text color="gray.500">No recent activity</Text>
+          )}
+        </Box>
+      </VStack>
+    </Container>
         
         <Slide
           direction='right'
