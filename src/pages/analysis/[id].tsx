@@ -121,15 +121,15 @@ export default function AnalysisPage() {
   }
 
   return (
-    <Box bg="gray.50" minH="100vh">
+    <Box bg="var(--background)" minH="100vh" color="var(--foreground)">
       <Sidebar />
       <Box ml={{ base: 0, md: "60px" }}>
         {/* Header */}
-        <Box bg="blue.600" py={4}>
+        <Box bg="brand.600" py={4}>
           <Container maxW="container.xl">
             <Flex justify="space-between" align="center">
               <Text fontSize="2xl" fontWeight="bold" color="white">
-                Call Coach Analysis Dashboard
+                Call Analysis Dashboard
               </Text>
             </Flex>
           </Container>
@@ -138,13 +138,13 @@ export default function AnalysisPage() {
         {/* Main Content */}
         <Container maxW="container.xl" py={8}>
           {/* Call Info Header */}
-          <Box bg="white" rounded="lg" shadow="sm" p={6} mb={6}>
+          <Box bg="var(--background)" rounded="lg" shadow="md" p={6} mb={6} border="1px" borderColor="var(--foreground)">
             <Flex justify="space-between" align="center">
               <Box>
-                <Text fontSize="2xl" fontWeight="bold" color="gray.800">
+                <Text fontSize="2xl" fontWeight="bold" color="var(--foreground)">
                   {analysis.customer_name} - {analysis.call_type}
                 </Text>
-                <Text color="gray.600" mt={1}>
+                <Text color="var(--foreground)" opacity={0.7} mt={1}>
                   {new Date(analysis.created_at).toLocaleDateString()} | 45 minutes | {analysis.csm_name}
                 </Text>
               </Box>
@@ -158,7 +158,8 @@ export default function AnalysisPage() {
                 >
                   3.8
                 </Circle>
-                <Text mt={2} fontWeight="bold">Overall Score</Text>
+                <Text mt={2} fontWeight="bold" color="var(--foreground)">Overall Score</Text>
+                <Text fontSize="sm" color="var(--foreground)" opacity={0.7}>out of 5</Text>
               </Box>
             </Flex>
           </Box>
@@ -166,11 +167,11 @@ export default function AnalysisPage() {
           {/* Summary and Scores Grid */}
           <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6} mb={6}>
             {/* Call Summary */}
-            <Box bg="white" rounded="lg" shadow="sm" p={6}>
-              <Text fontSize="xl" fontWeight="bold" color="gray.800" mb={4}>
+            <Box bg="var(--background)" rounded="lg" shadow="sm" p={6}>
+              <Text fontSize="xl" fontWeight="bold" color="var(--foreground)" mb={4}>
                 Call Summary
               </Text>
-              <Text color="gray.600" mb={4}>
+              <Text color="var(--foreground)" mb={4}>
                 {analysis.results.summary.text}
               </Text>
               <Button size="sm" colorScheme="green" variant="solid">
@@ -179,8 +180,8 @@ export default function AnalysisPage() {
             </Box>
 
             {/* Category Scores */}
-            <Box bg="white" rounded="lg" shadow="sm" p={6}>
-              <Text fontSize="xl" fontWeight="bold" color="gray.800" mb={6}>
+            <Box bg="var(--background)" rounded="lg" shadow="sm" p={6}>
+              <Text fontSize="xl" fontWeight="bold" color="var(--foreground)" mb={6}>
                 Category Scores
               </Text>
               <Stack spacing={4}>
@@ -190,16 +191,16 @@ export default function AnalysisPage() {
                     return (
                       <Box key={category}>
                         <Flex justify="space-between" mb={2}>
-                          <Text color="gray.700" fontWeight="medium">
+                          <Text color="var(--foreground)" fontWeight="medium">
                             {category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                           </Text>
-                          <Text color="blue.800" fontWeight="bold">
+                          <Text color="var(--foreground)" fontWeight="bold">
                             {data.score.toFixed(1)}
                           </Text>
                         </Flex>
                         <Progress 
                           value={data.score * 20} 
-                          colorScheme="blue" 
+                          colorScheme={data.score >= 4 ? "green" : data.score >= 3 ? "yellow" : "orange"}
                           size="sm" 
                           borderRadius="full"
                         />
@@ -213,13 +214,13 @@ export default function AnalysisPage() {
           </Grid>
 
           {/* Category Grid */}
-          <Box bg="white" rounded="lg" shadow="sm" overflow="hidden" border="2px" borderColor="gray.300">
+          <Box bg="var(--background)" rounded="lg" shadow="sm" overflow="hidden" border="2px" borderColor="var(--foreground)">
             {/* Grid Header */}
-            <Box bg="blue.600" p={4} borderBottom="2px" borderColor="gray.300">
+            <Box bg="brand.600" p={4} borderBottom="2px" borderColor="var(--foreground)">
               <Grid templateColumns="180px 1fr 1fr" gap={4}>
-                <Text color="white" fontWeight="bold">Category</Text>
-                <Text color="white" fontWeight="bold">Strengths</Text>
-                <Text color="white" fontWeight="bold">Opportunities</Text>
+                <Text color="white" fontWeight="bold" textAlign="center">Category</Text>
+                <Text color="white" fontWeight="bold" textAlign="center">Strengths</Text>
+                <Text color="white" fontWeight="bold" textAlign="center">Opportunities</Text>
               </Grid>
             </Box>
 
@@ -230,34 +231,42 @@ export default function AnalysisPage() {
                 <Box 
                   key={category} 
                   borderBottom="2px" 
-                  borderColor="gray.300"
-                  bg={index % 2 === 0 ? "white" : "gray.100"}
+                  borderColor="var(--foreground)"
+                  bg={index % 2 === 0 ? "var(--background)" : "gray.50"}
                 >
                   <Grid templateColumns="180px 1fr 1fr" gap={4} p={4}>
                     {/* Category Column */}
                     <Box p={4} borderRadius="md">
-                      <Text fontWeight="bold" color="gray.800">
+                      <Text fontWeight="bold" color="var(--foreground)">
                         {category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                       </Text>
-                      <Text color="blue.800" fontWeight="bold">
+                      <Circle 
+                        size="28px" 
+                        bg={getScoreColor(data.score)} 
+                        color="white" 
+                        fontSize="sm" 
+                        fontWeight="bold"
+                        mt={2}
+                        fontFamily="var(--font-adobe-garamond)"
+                      >
                         {data.score?.toFixed(1)}
-                      </Text>
+                      </Circle>
                     </Box>
 
                     {/* Strengths Column */}
                     <Box>
                       {data.strengths.map((strength, index) => (
                         <Box key={index} mb={4}>
-                          <Text fontWeight="bold" color="blue.800">
+                          <Text fontWeight="bold" color="var(--foreground)">
                             {strength.text}
                           </Text>
                           {strength.quote && (
-                            <Text fontSize="sm" color="blue.600" fontStyle="italic">
+                            <Text fontSize="sm" color="var(--foreground)" fontStyle="italic">
                               "{strength.quote}"
                             </Text>
                           )}
                           {strength.timestamp && (
-                            <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                            <Text fontSize="xs" color="var(--foreground)" fontStyle="italic">
                               {formatTimestamp(strength.timestamp)}
                             </Text>
                           )}
@@ -269,16 +278,16 @@ export default function AnalysisPage() {
                     <Box>
                       {data.opportunities.map((opportunity, index) => (
                         <Box key={index} mb={4}>
-                          <Text fontWeight="bold" color="red.800">
+                          <Text fontWeight="bold" color="var(--foreground)">
                             {opportunity.text}
                           </Text>
                           {opportunity.quote && (
-                            <Text fontSize="sm" color="red.600" fontStyle="italic">
+                            <Text fontSize="sm" color="var(--foreground)" fontStyle="italic">
                               "{opportunity.quote}"
                             </Text>
                           )}
                           {opportunity.timestamp && (
-                            <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                            <Text fontSize="xs" color="var(--foreground)" fontStyle="italic">
                               {formatTimestamp(opportunity.timestamp)}
                             </Text>
                           )}
