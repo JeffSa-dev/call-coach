@@ -151,12 +151,12 @@ export default function AnalysisPage() {
               <Box textAlign="center">
                 <Circle 
                   size="80px" 
-                  bg={getScoreColor(3.8)} 
+                  bg={getScoreColor(analysis.results?.summary?.score || 0)} 
                   color="white" 
                   fontSize="3xl" 
                   fontWeight="bold"
                 >
-                  3.8
+                  {(analysis.results?.summary?.score || 0).toFixed(1)}
                 </Circle>
                 <Text mt={2} fontWeight="bold" color="var(--foreground)">Overall Score</Text>
                 <Text fontSize="sm" color="var(--foreground)" opacity={0.7}>out of 5</Text>
@@ -174,9 +174,11 @@ export default function AnalysisPage() {
               <Text color="var(--foreground)" mb={4}>
                 {analysis.results.summary.text}
               </Text>
-              <Button size="sm" colorScheme="green" variant="solid">
-                Practice Now
-              </Button>
+              <Link href={`/coaching/${analysis.id}`}>
+                <Button size="sm" colorScheme="green" variant="solid">
+                  Practice Now
+                </Button>
+              </Link>
             </Box>
 
             {/* Category Scores */}

@@ -9,7 +9,6 @@ import {
   import { Session } from '@supabase/supabase-js'
   import { FiX } from 'react-icons/fi'
   import { supabase } from '@/lib/supabase-client'
-  import { analyzeTranscript } from '@/lib/claude'
 
   type UploadFormData = {
     title: string
@@ -23,6 +22,13 @@ import {
     onClose: () => void;
     onUploadComplete?: () => void;
   }
+  
+  // Add error handling for Claude API key
+  const checkClaudeApiKey = () => {
+    if (!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY) {
+      throw new Error('Claude API key is not configured. Please check your environment variables.');
+    }
+  };
   
   export default function TranscriptUpload({ session, onClose, onUploadComplete }: TranscriptUploadProps) {
     // Check authentication at the component level
@@ -67,7 +73,7 @@ import {
       const file = acceptedFiles[0]
       setUploading(true)
       
-      let analysisRecord: any = null; // Add this to track the analysis record
+      let analysisRecord: any = null;
   
       try {
         // Validate file size
@@ -96,7 +102,7 @@ import {
           throw new Error('Failed to create analysis record')
         }
   
-        analysisRecord = analysis; // Store the analysis record
+        analysisRecord = analysis;
   
         // Process file upload and Claude analysis in parallel
         const filePath = `${analysis.id}/${file.name}`
@@ -111,12 +117,14 @@ import {
                 upsert: false
               }),
             
-            // For PDFs, we'll analyze the raw text content
-            // PDF extraction will happen in background
+            // Dynamically import and use Claude client
             file.text().then(async text => {
               if (!text) {
                 throw new Error('Failed to read file content');
               }
+              
+              // Dynamically import the Claude client
+              const { analyzeTranscript } = await import('@/lib/claude');
               
               return analyzeTranscript(text, {
                 customer_name: formData.customer_name,
@@ -125,7 +133,7 @@ import {
                 csm_name: formData.csm_name
               });
             })
-          ])
+          ]);
   
           console.log('Parallel processing complete:', {
             uploadSuccess: !uploadResult.error,

@@ -18,6 +18,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import { getChatResponse } from '@/lib/claude';
 import Sidebar from '@/components/Layout/Sidebar';
+import VoiceControls from '@/components/VoiceControls';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -68,6 +69,8 @@ export default function CoachingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
+  const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
+  const [lastAssistantMessage, setLastAssistantMessage] = useState<string>('');
 
   useEffect(() => {
     if (id) {
@@ -129,6 +132,14 @@ What would you like to focus on?`
     setMessages([initialMessage]);
   }
 
+  const handleTranscript = (text: string) => {
+    setInputMessage(text);
+  };
+
+  const handleSpeakingComplete = () => {
+    setIsAssistantSpeaking(false);
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !analysis) return;
 
@@ -153,11 +164,22 @@ What would you like to focus on?`
         }),
       });
 
-      const data = await response.json();
-
+      // First check if the response is ok
       if (!response.ok) {
-        throw new Error(data.error || data.details || 'Failed to get response from coach');
+        // Try to get error details from response
+        let errorMessage = 'Failed to get response from coach';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
+
+      // Only try to parse JSON if response is ok
+      const data = await response.json();
       
       const assistantMessage: Message = {
         role: 'assistant',
@@ -165,6 +187,8 @@ What would you like to focus on?`
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      setLastAssistantMessage(data.response);
+      setIsAssistantSpeaking(true);
     } catch (error: any) {
       console.error('Error getting chat response:', {
         message: error.message,
@@ -263,21 +287,29 @@ What would you like to focus on?`
 
             {/* Input Area */}
             <Box p={4} borderTop="1px" borderColor="var(--foreground)">
-              <HStack spacing={4}>
-                <Input
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              <VStack spacing={4} align="stretch">
+                <HStack spacing={4}>
+                  <Input
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  />
+                  <IconButton
+                    aria-label="Send message"
+                    icon={<FiSend />}
+                    colorScheme="brand"
+                    onClick={handleSendMessage}
+                    isLoading={isLoading}
+                  />
+                </HStack>
+                <VoiceControls
+                  onTranscript={handleTranscript}
+                  textToSpeak={lastAssistantMessage}
+                  isAssistantSpeaking={isAssistantSpeaking}
+                  onSpeakingComplete={handleSpeakingComplete}
                 />
-                <IconButton
-                  aria-label="Send message"
-                  icon={<FiSend />}
-                  colorScheme="brand"
-                  onClick={handleSendMessage}
-                  isLoading={isLoading}
-                />
-              </HStack>
+              </VStack>
             </Box>
           </VStack>
         </Container>

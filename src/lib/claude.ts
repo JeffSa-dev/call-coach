@@ -68,17 +68,21 @@ const burstLimiter = new RateLimiter({
 });
 
 // API authentication and configuration
-const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
+const CLAUDE_API_KEY = typeof window === 'undefined' 
+  ? process.env.ANTHROPIC_API_KEY 
+  : process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
 
 // Add debug logging
 console.log('Claude API Key status in claude.ts:', {
   exists: !!CLAUDE_API_KEY,
   length: CLAUDE_API_KEY?.length || 0,
   prefix: CLAUDE_API_KEY?.substring(0, 4) || 'none',
-  envKeys: Object.keys(process.env)
+  envKeys: Object.keys(process.env),
+  isServer: typeof window === 'undefined'
 });
 
-if (!CLAUDE_API_KEY) {
+// Only validate API key on server side
+if (typeof window === 'undefined' && !CLAUDE_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY environment variable is not set');
 }
 
@@ -86,7 +90,7 @@ const MODEL = 'claude-3-haiku-20240307';
 
 // Create client with security measures
 const claudeClient = new Anthropic({
-  apiKey: CLAUDE_API_KEY,
+  apiKey: CLAUDE_API_KEY || '',
   dangerouslyAllowBrowser: true
 });
 
@@ -107,32 +111,37 @@ async function makeClaudeRequest(requestFn: () => Promise<any>) {
       throw new Error('Too many requests. Please wait a minute and try again.');
     }
 
-    // Validate API key
+    // Validate API key before making request
     if (!CLAUDE_API_KEY) {
-      throw new Error('Claude API key is not configured.');
+      throw new Error('Claude API key is not configured. Please check your environment variables.');
     }
 
     return await requestFn();
   } catch (error: any) {
-    if (error instanceof Anthropic.AnthropicError) {
-      // Handle API-specific errors
-      const errorMessage = error.message || 'Unknown Claude API error';
-      
-      // Use error.error?.status or error.status based on the error structure
-      const status = error.error?.status || error.status;
-      
-      if (status === 401) {
-        throw new Error('Authentication failed. Check your API key.');
-      } else if (status === 429) {
-        throw new Error('Claude API rate limit exceeded. Please try again later.');
-      } else if (status === 500) {
-        throw new Error('Claude API server error. Please try again later.');
-      }
-      
-      throw new Error(`Claude API error: ${errorMessage}`);
+    // Log the full error for debugging
+    console.error('Claude API error:', {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+      type: error.type,
+      details: error.details
+    });
+
+    // Handle API-specific errors
+    if (error.status === 401) {
+      throw new Error('Authentication failed. Check your API key.');
+    } else if (error.status === 429) {
+      throw new Error('Claude API rate limit exceeded. Please try again later.');
+    } else if (error.status === 500) {
+      throw new Error('Claude API server error. Please try again later.');
     }
     
-    throw new Error(`Error communicating with Claude: ${error.message}`);
+    // Handle other types of errors
+    if (error.message?.includes('API key')) {
+      throw new Error('Claude API key is not configured. Please check your environment variables.');
+    }
+    
+    throw new Error(`Error communicating with Claude: ${error.message || 'Unknown error'}`);
   }
 }
 
@@ -486,11 +495,15 @@ export async function getChatResponse(
       model: MODEL,
       system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
-      temperature: 0.9, // Higher temperature for more natural conversation
+      temperature: 0.9,
       max_tokens: 1000
     });
 
-    return response.content[0].text;
+    const content = response.content[0];
+    if ('text' in content) {
+      return content.text;
+    }
+    throw new Error('Unexpected response format from Claude API');
   });
 }
 

@@ -25,6 +25,7 @@ import {
   SlideFade,
   Badge,
   Tooltip,
+  Circle,
 } from '@chakra-ui/react'
 import { FiUpload, FiPieChart, FiClock, FiCheckCircle, FiFilter, FiX } from 'react-icons/fi'
 import SignIn from '@/components/Auth/Signin'
@@ -37,13 +38,14 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 
 function Home() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [userProfile, setUserProfile] = useState<{ first_name: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     totalCalls: 0,
     analyzedCalls: 0,
     averageScore: 0,
-    recentActivity: []
+    recentActivity: [] as any[]
   })
   const bgColor = useColorModeValue('white', 'gray.700')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -85,12 +87,28 @@ function Home() {
     }
   }
 
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('first_name')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+      setUserProfile(data)
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
+
   useEffect(() => {
     const setupAuth = async () => {
       try {
         const { data: { session: existingSession } } = await supabase.auth.getSession()
         if (existingSession?.user) {
           setSession(existingSession)
+          await fetchUserProfile(existingSession.user.id)
           
           // Fetch recent analyses
           await refreshAnalyses()
@@ -107,11 +125,12 @@ function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setSession(session)
+        fetchUserProfile(session.user.id)
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [])
 
   const handleUpload = () => {
     setIsUploadOpen(true)
@@ -147,7 +166,9 @@ function Home() {
             {/* Header Section with Upload Button */}
         <Flex justify="space-between" align="center">
           <Box>
-            <Text fontSize="2xl" fontWeight="bold" mb={2}>Welcome, {session.user.email}</Text>
+            <Text fontSize="2xl" fontWeight="bold" mb={2}>
+              Welcome, {userProfile?.first_name || session?.user?.email}!
+            </Text>
             <Text color="gray.600">Manage and analyze your calls</Text>
           </Box>
           <Button
@@ -331,7 +352,7 @@ function Home() {
                   >
                     <Text fontWeight="medium" fontSize="sm" color="white">Customer</Text>
                     <Text fontWeight="medium" fontSize="sm" color="white">Call Type</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="white">Summary</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Score</Text>
                     <Text fontWeight="medium" fontSize="sm" color="white">Strengths</Text>
                     <Text fontWeight="medium" fontSize="sm" color="white">Opportunities</Text>
                     <Text fontWeight="medium" fontSize="sm" color="white">Date</Text>
@@ -343,13 +364,13 @@ function Home() {
                       <ActivityItem key={analysis.id} analysis={analysis} />
                     ))}
                   </VStack>
-                </VStack>
-              ) : (
-                <Text color="gray.500">No recent activity</Text>
-              )}
-            </Box>
-          </VStack>
-        </Container>
+            </VStack>
+          ) : (
+            <Text color="gray.500">No recent activity</Text>
+          )}
+        </Box>
+      </VStack>
+    </Container>
         
         <Slide
           direction='right'
@@ -418,12 +439,19 @@ function ActionCard({ title, description, icon, onClick }) {
 }
 
 const ActivityItem = ({ analysis }) => {
-  const strengths = analysis.results?.value_articulation?.strengths || [];
-  const opportunities = analysis.results?.value_articulation?.opportunities || [];
+  const strengths = analysis.results?.value_demonstration?.strengths || [];
+  const opportunities = analysis.results?.value_demonstration?.opportunities || [];
 
   const strengthsTooltip = strengths.map(s => s.text).join('\n');
   const opportunitiesTooltip = opportunities.map(o => o.text).join('\n');
-  const summaryText = analysis.results?.summary?.text || '';
+  const overallScore = analysis.results?.summary?.score || 0;
+
+  // Get color based on score
+  const getScoreColor = (score: number) => {
+    if (score >= 4) return "green.500";
+    if (score >= 3) return "yellow.500";
+    return "orange.500";
+  };
 
   return (
     <Link href={`/analysis/${analysis.id}`} style={{ textDecoration: 'none' }}>
@@ -437,8 +465,18 @@ const ActivityItem = ({ analysis }) => {
       >
         <Text fontWeight="bold" color="var(--foreground)" noOfLines={1}>{analysis.customer_name}</Text>
         <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{analysis.call_type}</Text>
-        <Tooltip label={summaryText} placement="top">
-          <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{summaryText}</Text>
+        <Tooltip label={`Overall Score: ${overallScore.toFixed(1)}/5`} placement="top">
+          <Flex justify="center">
+            <Circle
+              size="28px"
+              bg={getScoreColor(overallScore)}
+              color="white"
+              fontWeight="bold"
+              fontSize="sm"
+            >
+              {overallScore.toFixed(1)}
+            </Circle>
+          </Flex>
         </Tooltip>
         <Tooltip label={strengthsTooltip} placement="top">
           <Badge colorScheme="green" textAlign="center">
