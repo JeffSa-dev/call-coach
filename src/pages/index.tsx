@@ -222,11 +222,11 @@ function Home() {
                 <Text 
                   fontSize={{ base: "md", md: "lg" }} 
                   color="var(--foreground)"
-                  maxW={{ base: "100%", md: "900px" }}
+                  maxW={{ base: "100%", md: "1000px" }}
                   lineHeight="tall"
                 >
-                  Get AI-powered insights from your customer calls. 
-                  Improve your consulting skills, track your progress, and boost your success rate.
+                  Improve your consulting skills, track your progress, and boost your success rate with AI-powered insights and coaching
+                  
                 </Text>
               </VStack>
             </Box>
@@ -258,7 +258,7 @@ function Home() {
                   <Stack spacing={4}>
                     <Text fontWeight="medium" color="gray.700">Filters</Text>
                     <Grid templateColumns="repeat(3, 1fr)" gap={4}>
-                      <Box>
+                      <Box> 
                         <Text fontSize="sm" mb={2}>Customer Name</Text>
                         <Input
                           placeholder="Search customers..."
@@ -350,12 +350,12 @@ function Home() {
                     py={3} 
                     bg="brand.600" 
                   >
-                    <Text fontWeight="medium" fontSize="sm" color="white">Customer</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="white">Call Type</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="white">Score</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="white">Strengths</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="white">Opportunities</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="white">Date</Text>
+                    <Text fontWeight="bold" fontSize="md" color="white">Customer</Text>
+                    <Text fontWeight="bold" fontSize="md" color="white">Call Type</Text>
+                    <Text fontWeight="bold" fontSize="md" color="white">Score</Text>
+                    <Text textAlign="center" fontWeight="bold" fontSize="md" color="white">Strengths</Text>
+                    <Text textAlign="center" fontWeight="bold" fontSize="md" color="white">Opportunities</Text>
+                    <Text textAlign="center" fontWeight="bold" fontSize="md" color="white">Date</Text>
                   </Grid>
                   
                   {/* Table Body */}
@@ -466,7 +466,7 @@ const ActivityItem = ({ analysis }) => {
         <Text fontWeight="bold" color="var(--foreground)" noOfLines={1}>{analysis.customer_name}</Text>
         <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{analysis.call_type}</Text>
         <Tooltip label={`Overall Score: ${overallScore.toFixed(1)}/5`} placement="top">
-          <Flex justify="center">
+          <Flex justify="left">
             <Circle
               size="28px"
               bg={getScoreColor(overallScore)}
@@ -488,7 +488,7 @@ const ActivityItem = ({ analysis }) => {
             {opportunities.length}
           </Badge>
         </Tooltip>
-        <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{analysis.date}</Text>
+        <Text textAlign="center" fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{analysis.date}</Text>
       </Grid>
     </Link>
   );
