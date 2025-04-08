@@ -68,20 +68,25 @@ const burstLimiter = new RateLimiter({
 });
 
 // API authentication and configuration
-const CLAUDE_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
+const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // Add debug logging
-console.log('Claude API Key status:', {
+console.log('Claude API Key status in claude.ts:', {
   exists: !!CLAUDE_API_KEY,
   length: CLAUDE_API_KEY?.length || 0,
-  prefix: CLAUDE_API_KEY?.substring(0, 4) || 'none'
+  prefix: CLAUDE_API_KEY?.substring(0, 4) || 'none',
+  envKeys: Object.keys(process.env)
 });
+
+if (!CLAUDE_API_KEY) {
+  throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+}
 
 const MODEL = 'claude-3-haiku-20240307';
 
 // Create client with security measures
 const claudeClient = new Anthropic({
-  apiKey: CLAUDE_API_KEY || '',  // Ensure we always pass a string
+  apiKey: CLAUDE_API_KEY,
   dangerouslyAllowBrowser: true
 });
 
@@ -160,7 +165,7 @@ export async function analyzeTranscript(
   });
 
   // Log prompt template size
-  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Analyze this customer call transcript and provide structured feedback in JSON format. Speak directly to ${metadata.csm_name} using first-person address ("you" instead of "the CSM").
+  const promptTemplate = `You are a Customer Success Post-Call Coach specializing in B2B SaaS customer interactions. Analyze this customer call transcript and provide structured feedback in JSON format.
 
 Here is the transcript you need to analyze:
 
@@ -179,7 +184,8 @@ CRITICAL REQUIREMENTS:
    3 = Satisfactory (met basic expectations)
    4 = Strong (exceeded expectations)
    5 = Exceptional (masterful execution)
-6. If a particular area or skill was not relevant or not covered during the call, indicate this by using "N/A" in the text field and null for the score
+6. Speak directly to ${metadata.csm_name} using first-person address ("you" instead of "the CSM").
+7. If a particular area or skill was not relevant or not covered during the call, indicate this by using "N/A" in the text field and null for the score
 
 For example, if there were no competitor mentions during the call:
 
@@ -476,7 +482,7 @@ export async function getChatResponse(
   }
 
   return makeClaudeRequest(async () => {
-    const response = await claudeClient.post('/messages', {
+    const response = await claudeClient.messages.create({
       model: MODEL,
       system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
@@ -484,7 +490,7 @@ export async function getChatResponse(
       max_tokens: 1000
     });
 
-    return response.data.content[0].text;
+    return response.content[0].text;
   });
 }
 

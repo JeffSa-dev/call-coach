@@ -177,16 +177,30 @@ function Home() {
                 bgGradient="linear(to-l, brand.500, transparent)"
                 opacity={0.4}
               />
-              <VStack align="start" spacing={4} position="relative" zIndex={1}>
+              <VStack 
+                align="start" 
+                spacing={4} 
+                position="relative" 
+                zIndex={1}
+                bg="var(--background)" 
+                rounded="lg" 
+                shadow="md" 
+                border="1px" 
+                borderColor="var(--foreground)"
+                p={6}
+                w="100%"
+              >
                 <Text 
                   fontSize={{ base: "2xl", md: "3xl" }} 
                   fontWeight="bold"
+                  color="var(--foreground)"
                   maxW={{ base: "100%", md: "600px" }}
                 >
                   Elevate Your Performance
                 </Text>
                 <Text 
                   fontSize={{ base: "md", md: "lg" }} 
+                  color="var(--foreground)"
                   maxW={{ base: "100%", md: "900px" }}
                   lineHeight="tall"
                 >
@@ -297,22 +311,30 @@ function Home() {
               </Collapse>
 
               {stats.recentActivity.length > 0 ? (
-                <VStack align="stretch" spacing={0}>
+                <VStack 
+                  align="stretch" 
+                  spacing={0}
+                  bg="var(--background)" 
+                  rounded="lg" 
+                  shadow="md" 
+                  border="1px" 
+                  borderColor="var(--foreground)"
+                  overflow="hidden"
+                >
                   {/* Table Header */}
                   <Grid 
                     templateColumns={{ base: "1fr", md: "2fr 1fr 1fr 100px 100px 1fr" }}
                     gap={4} 
                     px={4} 
                     py={3} 
-                    bg="gray.50" 
-                    borderTopRadius="md"
+                    bg="brand.600" 
                   >
-                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Customer</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Call Type</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Summary</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Strengths</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Opportunities</Text>
-                    <Text fontWeight="medium" fontSize="sm" color="gray.600">Date</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Customer</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Call Type</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Summary</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Strengths</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Opportunities</Text>
+                    <Text fontWeight="medium" fontSize="sm" color="white">Date</Text>
                   </Grid>
                   
                   {/* Table Body */}
@@ -321,13 +343,13 @@ function Home() {
                       <ActivityItem key={analysis.id} analysis={analysis} />
                     ))}
                   </VStack>
-            </VStack>
-          ) : (
-            <Text color="gray.500">No recent activity</Text>
-          )}
-        </Box>
-      </VStack>
-    </Container>
+                </VStack>
+              ) : (
+                <Text color="gray.500">No recent activity</Text>
+              )}
+            </Box>
+          </VStack>
+        </Container>
         
         <Slide
           direction='right'
@@ -413,10 +435,10 @@ const ActivityItem = ({ analysis }) => {
         _hover={{ bg: 'gray.50' }}
         cursor="pointer"
       >
-        <Text fontWeight="medium" noOfLines={1}>{analysis.customer_name}</Text>
-        <Text color="gray.600" noOfLines={1}>{analysis.call_type}</Text>
+        <Text fontWeight="bold" color="var(--foreground)" noOfLines={1}>{analysis.customer_name}</Text>
+        <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{analysis.call_type}</Text>
         <Tooltip label={summaryText} placement="top">
-          <Text color="gray.600" noOfLines={1}>{summaryText}</Text>
+          <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{summaryText}</Text>
         </Tooltip>
         <Tooltip label={strengthsTooltip} placement="top">
           <Badge colorScheme="green" textAlign="center">
@@ -428,7 +450,7 @@ const ActivityItem = ({ analysis }) => {
             {opportunities.length}
           </Badge>
         </Tooltip>
-        <Text color="gray.600" noOfLines={1}>{analysis.date}</Text>
+        <Text fontSize="sm" color="var(--foreground)" fontStyle="italic" noOfLines={1}>{analysis.date}</Text>
       </Grid>
     </Link>
   );
