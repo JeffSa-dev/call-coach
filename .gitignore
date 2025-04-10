@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+*.swp
+*.swo
+*.tmp
 
 # debug
 npm-debug.log*
@@ -39,3 +42,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cursor
+.cursor/
+
+# vscode
+.vscode/
+
+#eslint
+.eslintrc.js    
