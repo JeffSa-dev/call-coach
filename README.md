@@ -4,10 +4,14 @@ An AI-powered sales coaching platform built with Next.js, Supabase, and Claude A
 
 ## Features
 
-- Sales call analysis
-- Real-time AI coaching feedback
-- Conversation history
-- Supabase data persistence
+- User authentication via Supabase
+- Dashboard to view and manage call analyses
+- Upload call transcripts for analysis
+- Display recent call analyses with scores, strengths, and opportunities
+- Filter analyses by customer, call type, or date range
+- View detailed analysis results (links to analysis pages)
+- AI-powered analysis of call transcripts (utilizing Claude AI via backend processes)
+- Background processing for tasks like PDF text extraction (using Vercel Cron Jobs)
 
 ## Getting Started
 
@@ -50,9 +54,10 @@ Tests conversation history with Claude AI.
 ## Tech Stack
 
 - [Next.js](https://nextjs.org) - React framework
-- [Supabase](https://supabase.com) - Database and authentication
-- [Claude AI](https://anthropic.com) - AI coaching engine
+- [Supabase](https://supabase.com) - Database, authentication, and backend services
+- [Claude AI](https://anthropic.com) - AI engine for call analysis (likely used in backend)
 - [TypeScript](https://typescriptlang.org) - Type safety
+- [Chakra UI](https://chakra-ui.com/) - Frontend component library
 
 ## Development
 
