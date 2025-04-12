@@ -4,7 +4,7 @@ An AI-powered sales coaching platform built with Next.js, Supabase, and Claude A
 
 ## Features
 
-- User authentication via Supabase
+- User authentication via Google oAuth
 - Dashboard to view and manage call analyses
 - Upload call transcripts for analysis
 - Display recent call analyses with scores, strengths, and opportunities
